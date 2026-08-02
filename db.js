@@ -56,4 +56,4 @@ function diagnostico() {
   };
 }
 
-module.exports = { getPool, inspect, diagnostico };
+module.exports = { getPool, inspect, diagnostico, hostEmUso };

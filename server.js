@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const { inspect, diagnostico } = require('./db');
+const { buscarPorSlug, render, paginaNaoEncontrada } = require('./webapp');
 
 const app = express();
 
@@ -34,6 +35,34 @@ app.get('/db-check', async (req, res) => {
   } catch (err) {
     res.status(500).json({ connected: false, env, code: err.code, message: err.message });
   }
+});
+
+// WebApp publico do candidato: candidato.bio/{slug}
+// Fica por ultimo para nao capturar as rotas fixas acima.
+const SLUG_VALIDO = /^[a-z0-9][a-z0-9-]{1,59}$/;
+
+app.get('/:slug', async (req, res, next) => {
+  const { slug } = req.params;
+  if (!SLUG_VALIDO.test(slug)) return next();
+
+  try {
+    const tenant = await buscarPorSlug(slug);
+    if (!tenant) {
+      return res.status(404).type('html').send(paginaNaoEncontrada());
+    }
+    res.type('html').send(render(tenant));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.use((req, res) => {
+  res.status(404).type('html').send(paginaNaoEncontrada());
+});
+
+app.use((err, req, res, next) => {
+  console.error('Erro nao tratado:', err);
+  res.status(500).type('html').send(paginaNaoEncontrada());
 });
 
 app.listen(PORT, HOST, () => {
