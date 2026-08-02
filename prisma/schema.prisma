@@ -1,0 +1,608 @@
+// Voto.IO — CRM Eleitoral
+// Banco: MariaDB 11.8 (Hostinger compartilhada)
+//
+// REGRA CENTRAL DO MULTI-TENANT
+// Toda tabela de dados carrega tenant_id e nenhuma consulta pode rodar sem
+// filtrar por ele. MariaDB nao tem Row Level Security como o Postgres, entao
+// esse isolamento e responsabilidade 100% da aplicacao. Use sempre o middleware
+// de tenant do Prisma — nunca prisma.supporter.findMany() sem where.tenantId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// A URL de conexao fica em prisma.config.ts (exigencia do Prisma 7).
+datasource db {
+  provider = "mysql"
+}
+
+// ---------------------------------------------------------------------------
+// Tenants e acesso
+// ---------------------------------------------------------------------------
+
+/// Um tenant = um candidato. O slug e a URL publica: voto.io/{slug}
+model Tenant {
+  id   String @id @default(uuid()) @db.Char(36)
+  slug String @unique @db.VarChar(60)
+
+  name     String  @db.VarChar(120)
+  number   String? @db.VarChar(10)
+  party    String? @db.VarChar(80)
+  city     String? @db.VarChar(120)
+  state    String? @db.Char(2)
+  bio      String? @db.Text
+  slogan   String? @db.VarChar(200)
+  photoUrl String? @map("photo_url") @db.VarChar(500)
+  logoUrl  String? @map("logo_url") @db.VarChar(500)
+
+  primaryColor   String @default("#1e40af") @map("primary_color") @db.Char(7)
+  secondaryColor String @default("#f59e0b") @map("secondary_color") @db.Char(7)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users         TenantUser[]
+  supporters    Supporter[]
+  campaigns     Campaign[]
+  notifications Notification[]
+  smsLogs       SmsLog[]
+  pushTokens    PushToken[]
+  events        Event[]
+  news          News[]
+  photos        Photo[]
+  videos        Video[]
+  proposals     Proposal[]
+  tags          Tag[]
+  consents      Consent[]
+  integrations  Integration[]
+  settings      Setting[]
+  auditLogs     AuditLog[]
+  utmLogs       UtmLog[]
+
+  @@index([active])
+  @@map("tenants")
+}
+
+enum UserRole {
+  MASTER
+  CANDIDATE
+  TEAM
+}
+
+/// Usuarios com login. MASTER e global; CANDIDATE e TEAM acessam via TenantUser.
+model User {
+  id           String   @id @default(uuid()) @db.Char(36)
+  email        String   @unique @db.VarChar(180)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  name         String   @db.VarChar(120)
+  role         UserRole @default(CANDIDATE)
+  phone        String?  @db.VarChar(20)
+
+  active      Boolean   @default(true)
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenants   TenantUser[]
+  campaigns Campaign[]
+  auditLogs AuditLog[]
+
+  @@index([role, active])
+  @@map("users")
+}
+
+/// Liga usuario a tenant. Um usuario de equipe pode servir varios candidatos.
+model TenantUser {
+  id       String   @id @default(uuid()) @db.Char(36)
+  tenantId String   @map("tenant_id") @db.Char(36)
+  userId   String   @map("user_id") @db.Char(36)
+  role     UserRole @default(TEAM)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_users")
+}
+
+// ---------------------------------------------------------------------------
+// Apoiadores
+// ---------------------------------------------------------------------------
+
+/// Apoiador cadastrado pelo WebApp. Nao tem login.
+/// O mesmo telefone pode apoiar candidatos diferentes, por isso a unicidade
+/// e composta com tenant_id.
+model Supporter {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  name  String  @db.VarChar(150)
+  phone String  @db.VarChar(20)
+  email String? @db.VarChar(180)
+  cep   String? @db.VarChar(9)
+  city  String? @db.VarChar(120)
+  state String? @db.Char(2)
+
+  /// Como chegou: organico, campanha, indicacao, qrcode...
+  origin String? @db.VarChar(60)
+
+  smsValidated   Boolean   @default(false) @map("sms_validated")
+  smsValidatedAt DateTime? @map("sms_validated_at")
+  pushActive     Boolean   @default(false) @map("push_active")
+
+  /// UTMs do primeiro contato. O historico completo fica em utm_logs.
+  utmSource   String? @map("utm_source") @db.VarChar(120)
+  utmMedium   String? @map("utm_medium") @db.VarChar(120)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(120)
+  utmContent  String? @map("utm_content") @db.VarChar(120)
+  utmTerm     String? @map("utm_term") @db.VarChar(120)
+
+  /// Dado pessoal sob LGPD: coletado para prova de consentimento.
+  registrationIp String? @map("registration_ip") @db.VarChar(45)
+  userAgent      String? @map("user_agent") @db.VarChar(500)
+
+  notes        String?   @db.Text
+  lastAccessAt DateTime? @map("last_access_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  /// Exclusao a pedido do titular (LGPD art. 18). Preenchido = anonimizado.
+  deletedAt DateTime? @map("deleted_at")
+
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tags          SupporterTag[]
+  pushTokens    PushToken[]
+  consents      Consent[]
+  notifications Notification[]
+  smsLogs       SmsLog[]
+  utmLogs       UtmLog[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, city])
+  @@index([tenantId, pushActive])
+  @@index([tenantId, smsValidated])
+  @@index([tenantId, origin])
+  @@map("supporters")
+}
+
+/// Rotulos de segmentacao: Empresario, Pastor, Zona Norte...
+model Tag {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  name  String @db.VarChar(60)
+  color String @default("#64748b") @db.Char(7)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supporters SupporterTag[]
+
+  @@unique([tenantId, name])
+  @@map("tags")
+}
+
+model SupporterTag {
+  supporterId String @map("supporter_id") @db.Char(36)
+  tagId       String @map("tag_id") @db.Char(36)
+  tenantId    String @map("tenant_id") @db.Char(36)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  supporter Supporter @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([supporterId, tagId])
+  @@index([tagId])
+  @@index([tenantId])
+  @@map("supporter_tags")
+}
+
+enum ConsentType {
+  SMS
+  PUSH
+  WHATSAPP
+  EMAIL
+  DATA_PROCESSING
+}
+
+/// Prova de consentimento (LGPD art. 8 §1: o controlador deve comprovar).
+/// Nunca sobrescreva um registro. Revogar = preencher revoked_at e criar novo.
+model Consent {
+  id          String @id @default(uuid()) @db.Char(36)
+  tenantId    String @map("tenant_id") @db.Char(36)
+  supporterId String @map("supporter_id") @db.Char(36)
+
+  type    ConsentType
+  granted Boolean     @default(true)
+
+  /// Versao e hash do texto exibido no momento do aceite. Sem isso nao ha
+  /// como provar ao que a pessoa consentiu se o texto mudar depois.
+  textVersion String @map("text_version") @db.VarChar(20)
+  textHash    String @map("text_hash") @db.Char(64)
+
+  ip        String?   @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  grantedAt DateTime  @default(now()) @map("granted_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supporter Supporter @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, granted])
+  @@index([supporterId, type])
+  @@map("consents")
+}
+
+model PushToken {
+  id          String @id @default(uuid()) @db.Char(36)
+  tenantId    String @map("tenant_id") @db.Char(36)
+  supporterId String @map("supporter_id") @db.Char(36)
+
+  token    String  @unique @db.VarChar(255)
+  platform String? @db.VarChar(30)
+
+  active     Boolean   @default(true)
+  lastSeenAt DateTime? @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supporter     Supporter      @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([tenantId, active])
+  @@index([supporterId])
+  @@map("push_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Comunicacao
+// ---------------------------------------------------------------------------
+
+enum Channel {
+  PUSH
+  SMS
+  RCS
+  WHATSAPP
+  EMAIL
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  CLICKED
+}
+
+/// Campanha de disparo. O funil e:
+/// Campanha -> Segmentacao -> Previa -> Agendamento -> Disparo -> Relatorios
+model Campaign {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  name    String  @db.VarChar(150)
+  channel Channel
+  title   String? @db.VarChar(150)
+  message String  @db.Text
+  linkUrl String? @map("link_url") @db.VarChar(500)
+
+  /// Filtros de segmentacao aplicados (cidade, tags, cep, push ativo...).
+  /// Guardado como enviado para o relatorio ser reproduzivel depois.
+  filters Json?
+
+  status      CampaignStatus @default(DRAFT)
+  scheduledAt DateTime?      @map("scheduled_at")
+  startedAt   DateTime?      @map("started_at")
+  finishedAt  DateTime?      @map("finished_at")
+
+  totalRecipients Int @default(0) @map("total_recipients")
+  totalSent       Int @default(0) @map("total_sent")
+  totalDelivered  Int @default(0) @map("total_delivered")
+  totalFailed     Int @default(0) @map("total_failed")
+  totalClicked    Int @default(0) @map("total_clicked")
+
+  createdById String?  @map("created_by_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  notifications Notification[]
+  smsLogs       SmsLog[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([status, scheduledAt])
+  @@map("campaigns")
+}
+
+/// Um registro por push enviado. Base dos relatorios de entrega.
+model Notification {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  campaignId  String? @map("campaign_id") @db.Char(36)
+  supporterId String? @map("supporter_id") @db.Char(36)
+  pushTokenId String? @map("push_token_id") @db.Char(36)
+
+  title   String? @db.VarChar(150)
+  message String  @db.Text
+
+  status         DeliveryStatus @default(QUEUED)
+  providerMsgId  String?        @map("provider_msg_id") @db.VarChar(180)
+  error          String?        @db.VarChar(500)
+  sentAt         DateTime?      @map("sent_at")
+  deliveredAt    DateTime?      @map("delivered_at")
+  clickedAt      DateTime?      @map("clicked_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign  Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  supporter Supporter? @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+  pushToken PushToken? @relation(fields: [pushTokenId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([campaignId, status])
+  @@index([supporterId])
+  @@index([pushTokenId])
+  @@map("notifications")
+}
+
+enum SmsPurpose {
+  VERIFICATION
+  CAMPAIGN
+}
+
+/// Log de SMS/RCS. Serve tanto para o codigo de confirmacao quanto para
+/// disparo de campanha — o campo purpose separa os dois.
+model SmsLog {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  campaignId  String? @map("campaign_id") @db.Char(36)
+  supporterId String? @map("supporter_id") @db.Char(36)
+
+  phone   String     @db.VarChar(20)
+  message String     @db.Text
+  purpose SmsPurpose @default(CAMPAIGN)
+  channel Channel    @default(SMS)
+
+  provider      String?        @db.VarChar(60)
+  providerMsgId String?        @map("provider_msg_id") @db.VarChar(180)
+  status        DeliveryStatus @default(QUEUED)
+  error         String?        @db.VarChar(500)
+  cost          Decimal?       @db.Decimal(10, 4)
+
+  sentAt      DateTime? @map("sent_at")
+  deliveredAt DateTime? @map("delivered_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign  Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  supporter Supporter? @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@index([tenantId, purpose, createdAt])
+  @@index([campaignId])
+  @@index([phone])
+  @@map("sms_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Conteudo do WebApp
+// ---------------------------------------------------------------------------
+
+model Event {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  title       String    @db.VarChar(180)
+  description String?   @db.Text
+  startsAt    DateTime  @map("starts_at")
+  endsAt      DateTime? @map("ends_at")
+  location    String?   @db.VarChar(250)
+  city        String?   @db.VarChar(120)
+  state       String?   @db.Char(2)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, startsAt])
+  @@index([tenantId, published])
+  @@map("events")
+}
+
+model News {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  title    String  @db.VarChar(200)
+  slug     String  @db.VarChar(200)
+  excerpt  String? @db.VarChar(500)
+  content  String  @db.LongText
+  coverUrl String? @map("cover_url") @db.VarChar(500)
+
+  published   Boolean   @default(false)
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, published, publishedAt])
+  @@map("news")
+}
+
+model Photo {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  title    String? @db.VarChar(180)
+  url      String  @db.VarChar(500)
+  thumbUrl String? @map("thumb_url") @db.VarChar(500)
+  album    String? @db.VarChar(120)
+  position Int     @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, album, position])
+  @@map("photos")
+}
+
+model Video {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  title    String  @db.VarChar(180)
+  url      String  @db.VarChar(500)
+  provider String? @db.VarChar(40)
+  thumbUrl String? @map("thumb_url") @db.VarChar(500)
+  position Int     @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, position])
+  @@map("videos")
+}
+
+model Proposal {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  title       String  @db.VarChar(200)
+  description String? @db.Text
+  category    String? @db.VarChar(80)
+  icon        String? @db.VarChar(60)
+  position    Int     @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, position])
+  @@index([tenantId, published])
+  @@map("proposals")
+}
+
+// ---------------------------------------------------------------------------
+// Infraestrutura
+// ---------------------------------------------------------------------------
+
+/// Gateways de SMS, Push, RCS. tenant_id nulo = integracao global do Master.
+/// ATENCAO: credentials guarda segredo de terceiro. Grave cifrado, nunca cru.
+model Integration {
+  id       String  @id @default(uuid()) @db.Char(36)
+  tenantId String? @map("tenant_id") @db.Char(36)
+
+  provider    String  @db.VarChar(60)
+  channel     Channel
+  credentials Json?
+  active      Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, channel])
+  @@index([channel, active])
+  @@map("integrations")
+}
+
+/// Chave/valor por tenant. tenant_id nulo = configuracao global.
+model Setting {
+  id       String  @id @default(uuid()) @db.Char(36)
+  tenantId String? @map("tenant_id") @db.Char(36)
+
+  key   String @db.VarChar(120)
+  value Json?
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+  @@map("settings")
+}
+
+/// Trilha de auditoria. Nunca deve ser editada ou apagada pela aplicacao.
+model AuditLog {
+  id       String  @id @default(uuid()) @db.Char(36)
+  tenantId String? @map("tenant_id") @db.Char(36)
+  userId   String? @map("user_id") @db.Char(36)
+
+  action   String  @db.VarChar(80)
+  entity   String  @db.VarChar(80)
+  entityId String? @map("entity_id") @db.Char(36)
+  before   Json?
+  after    Json?
+
+  ip        String?  @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+/// Toda visita rastreada, mesmo antes do cadastro. Quando o apoiador se
+/// cadastra, supporter_id e preenchido e a origem fica atribuida.
+model UtmLog {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  supporterId String? @map("supporter_id") @db.Char(36)
+
+  source   String? @db.VarChar(120)
+  medium   String? @db.VarChar(120)
+  campaign String? @db.VarChar(120)
+  content  String? @db.VarChar(120)
+  term     String? @db.VarChar(120)
+
+  path      String? @db.VarChar(300)
+  referrer  String? @db.VarChar(500)
+  ip        String? @db.VarChar(45)
+  userAgent String? @map("user_agent") @db.VarChar(500)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supporter Supporter? @relation(fields: [supporterId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, source, medium])
+  @@index([supporterId])
+  @@map("utm_logs")
+}

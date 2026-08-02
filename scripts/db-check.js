@@ -29,7 +29,16 @@ if (faltando.length) {
       console.error('Provavel causa: IP nao liberado em hPanel > Bancos de Dados > MySQL Remoto.');
     }
     if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error('Provavel causa: usuario ou senha incorretos no .env.');
+      // O MySQL informa o endereco de origem na mensagem. Se vier um IPv6
+      // (contem ':'), o problema e rota, nao credencial: o hostname da
+      // Hostinger resolve para IPv6 e so o IPv4 costuma estar liberado.
+      const origem = /@'([^']+)'/.exec(err.message)?.[1] ?? '';
+      if (origem.includes(':')) {
+        console.error(`Conexao saiu por IPv6 (${origem}), que nao esta liberado.`);
+        console.error('Use o IP v4 do servidor em DB_HOST no lugar do hostname.');
+      } else {
+        console.error('Provavel causa: usuario ou senha incorretos no .env.');
+      }
     }
     process.exitCode = 1;
   } finally {
