@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const express = require('express');
-const { inspect } = require('./db');
+const { inspect, diagnostico } = require('./db');
 
 const app = express();
 
@@ -26,11 +26,13 @@ app.get('/db-check', async (req, res) => {
     return res.status(404).json({ error: 'not found' });
   }
 
+  const env = diagnostico();
+
   try {
     const result = await inspect();
-    res.json({ connected: true, ...result });
+    res.json({ connected: true, env, ...result });
   } catch (err) {
-    res.status(500).json({ connected: false, code: err.code, message: err.message });
+    res.status(500).json({ connected: false, env, code: err.code, message: err.message });
   }
 });
 
