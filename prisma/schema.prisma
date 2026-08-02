@@ -35,6 +35,9 @@ model Tenant {
   photoUrl String? @map("photo_url") @db.VarChar(500)
   logoUrl  String? @map("logo_url") @db.VarChar(500)
 
+  /// Imagem larga do topo do WebApp, atras da foto circular.
+  bannerUrl String? @map("banner_url") @db.VarChar(500)
+
   primaryColor   String @default("#1e40af") @map("primary_color") @db.Char(7)
   secondaryColor String @default("#f59e0b") @map("secondary_color") @db.Char(7)
 
@@ -55,6 +58,9 @@ model Tenant {
   proposals     Proposal[]
   tags          Tag[]
   consents      Consent[]
+  banners       Banner[]
+  socialLinks   SocialLink[]
+  links         ImportantLink[]
   integrations  Integration[]
   settings      Setting[]
   auditLogs     AuditLog[]
@@ -116,11 +122,23 @@ model TenantUser {
 /// Apoiador cadastrado pelo WebApp. Nao tem login.
 /// O mesmo telefone pode apoiar candidatos diferentes, por isso a unicidade
 /// e composta com tenant_id.
+/// O cadastro acontece em tres etapas, entao o apoiador existe antes de estar
+/// completo: informa o WhatsApp (PENDENTE), confirma o codigo (CONFIRMADO) e
+/// so entao informa nome e CEP (COMPLETO).
+enum SupporterStatus {
+  PENDENTE
+  CONFIRMADO
+  COMPLETO
+}
+
 model Supporter {
   id       String @id @default(uuid()) @db.Char(36)
   tenantId String @map("tenant_id") @db.Char(36)
 
-  name  String  @db.VarChar(150)
+  status SupporterStatus @default(PENDENTE)
+
+  /// Nulo ate a terceira etapa: o nome so e pedido apos confirmar o numero.
+  name  String? @db.VarChar(150)
   phone String  @db.VarChar(20)
   email String? @db.VarChar(180)
   cep   String? @db.VarChar(9)
@@ -133,6 +151,13 @@ model Supporter {
   smsValidated   Boolean   @default(false) @map("sms_validated")
   smsValidatedAt DateTime? @map("sms_validated_at")
   pushActive     Boolean   @default(false) @map("push_active")
+
+  /// Codigo de confirmacao gravado com hash: quem le o banco nao consegue
+  /// confirmar o cadastro no lugar do titular.
+  verificationHash      String?   @map("verification_hash") @db.Char(64)
+  verificationExpiresAt DateTime? @map("verification_expires_at")
+  verificationAttempts  Int       @default(0) @map("verification_attempts")
+  verificationSentAt    DateTime? @map("verification_sent_at")
 
   /// UTMs do primeiro contato. O historico completo fica em utm_logs.
   utmSource   String? @map("utm_source") @db.VarChar(120)
@@ -162,6 +187,7 @@ model Supporter {
   utmLogs       UtmLog[]
 
   @@unique([tenantId, phone])
+  @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([tenantId, city])
   @@index([tenantId, pushActive])
@@ -495,7 +521,10 @@ model Proposal {
   tenantId String @map("tenant_id") @db.Char(36)
 
   title       String  @db.VarChar(200)
+  /// Resumo exibido no card do carrossel.
   description String? @db.Text
+  /// Texto completo aberto no lightbox pelo botao do card.
+  content     String? @db.LongText
   category    String? @db.VarChar(80)
   icon        String? @db.VarChar(60)
   position    Int     @default(0)
@@ -509,6 +538,71 @@ model Proposal {
   @@index([tenantId, position])
   @@index([tenantId, published])
   @@map("proposals")
+}
+
+enum BannerSlot {
+  TOPO
+  MEIO
+  RODAPE
+}
+
+/// Espacos de divulgacao de campanha ou partido no WebApp.
+model Banner {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  slot     BannerSlot @default(MEIO)
+  imageUrl String     @map("image_url") @db.VarChar(500)
+  linkUrl  String?    @map("link_url") @db.VarChar(500)
+  alt      String?    @db.VarChar(200)
+  position Int        @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, slot, position])
+  @@map("banners")
+}
+
+/// Canais oficiais exibidos como icones no bloco "Me acompanhe nas redes".
+model SocialLink {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  /// whatsapp, instagram, tiktok, youtube, facebook, x, telegram...
+  platform String @db.VarChar(40)
+  url      String @db.VarChar(500)
+  position Int    @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platform])
+  @@index([tenantId, position])
+  @@map("social_links")
+}
+
+/// Bloco "Links importantes": botoes em pilula com icone e rotulo.
+model ImportantLink {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  label    String  @db.VarChar(120)
+  url      String  @db.VarChar(500)
+  iconUrl  String? @map("icon_url") @db.VarChar(500)
+  position Int     @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, position])
+  @@map("important_links")
 }
 
 // ---------------------------------------------------------------------------

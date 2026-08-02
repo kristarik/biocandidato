@@ -14,6 +14,35 @@ npm run db:check       # testa a conexao com o MySQL
 npm run dev
 ```
 
+## Criando um candidato
+
+```bash
+npm run candidato:novo -- --nome "Dra. Maria" --numero 12345 \
+  --partido "PSDB" --cidade "Recife" --estado PE
+
+npm run candidato:exemplo -- dra-maria   # conteudo ficticio para ver o layout
+```
+
+O comando cria tenant, usuario e senha inicial numa unica transacao e imprime
+as credenciais. A senha e aleatoria por candidato — senha padrao previsivel em
+sistema multi-tenant significa que quem descobre o padrao entra em todas as
+contas. Ela so aparece uma vez: depois vira hash e nao pode ser lida.
+
+## Cadastro do apoiador
+
+Tres etapas, para pedir o minimo na entrada:
+
+1. `POST /:slug/apoiar/iniciar` — WhatsApp, dispara o codigo por SMS
+2. `POST /:slug/apoiar/confirmar` — codigo de 6 digitos
+3. `POST /:slug/apoiar/completar` — nome e CEP
+
+O consentimento LGPD e gravado na etapa 2, nao na 1: e a confirmacao do codigo
+que prova que quem autorizou controla o numero informado.
+
+**Nenhum gateway de SMS esta integrado.** O codigo vai para o log do servidor.
+Em desenvolvimento, `SMS_MODO=console` no `.env` faz a API devolver o codigo na
+resposta — nunca use isso em producao.
+
 ## Banco de dados (Prisma + MariaDB)
 
 O schema fica em [prisma/schema.prisma](prisma/schema.prisma). A URL de conexao

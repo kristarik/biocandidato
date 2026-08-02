@@ -3,8 +3,12 @@ require('dotenv').config();
 const express = require('express');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada } = require('./webapp');
+const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
 
 const app = express();
+
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '16kb' }));
 
 // A Hostinger injeta PORT. Escutar em 0.0.0.0 e obrigatorio para o proxy
 // dela alcancar o processo - 127.0.0.1 nao funciona.
@@ -40,6 +44,72 @@ app.get('/db-check', async (req, res) => {
 // WebApp publico do candidato: candidato.bio/{slug}
 // Fica por ultimo para nao capturar as rotas fixas acima.
 const SLUG_VALIDO = /^[a-z0-9][a-z0-9-]{1,59}$/;
+
+/// Carrega o tenant e devolve 404 se o slug nao existir. Todas as rotas de
+/// cadastro passam por aqui: nenhuma escrita acontece sem tenant resolvido.
+async function comTenant(req, res, next) {
+  if (!SLUG_VALIDO.test(req.params.slug)) return next();
+  try {
+    const tenant = await buscarPorSlug(req.params.slug);
+    if (!tenant) return res.status(404).json({ erro: 'Candidato nao encontrado.' });
+    req.tenant = tenant;
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+function contexto(req) {
+  return {
+    ip: req.ip,
+    userAgent: String(req.get('user-agent') || '').slice(0, 500),
+  };
+}
+
+async function tratar(res, acao) {
+  try {
+    res.json(await acao());
+  } catch (err) {
+    if (err instanceof ErroCadastro) {
+      return res.status(err.status).json({ erro: err.message });
+    }
+    console.error('Erro no cadastro:', err);
+    res.status(500).json({ erro: 'Erro inesperado. Tente novamente.' });
+  }
+}
+
+app.post('/:slug/apoiar/iniciar', comTenant, (req, res) =>
+  tratar(res, () =>
+    iniciar({
+      tenant: req.tenant,
+      telefone: req.body?.telefone,
+      utm: req.body?.utm,
+      ...contexto(req),
+    })
+  )
+);
+
+app.post('/:slug/apoiar/confirmar', comTenant, (req, res) =>
+  tratar(res, () =>
+    confirmar({
+      tenant: req.tenant,
+      telefone: req.body?.telefone,
+      codigo: req.body?.codigo,
+      ...contexto(req),
+    })
+  )
+);
+
+app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
+  tratar(res, () =>
+    completar({
+      tenant: req.tenant,
+      telefone: req.body?.telefone,
+      nome: req.body?.nome,
+      cep: req.body?.cep,
+    })
+  )
+);
 
 app.get('/:slug', async (req, res, next) => {
   const { slug } = req.params;

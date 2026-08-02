@@ -16,6 +16,7 @@
     "db:status": "prisma migrate status",
     "db:studio": "prisma studio",
     "candidato:novo": "node scripts/novo-candidato.js",
+    "candidato:exemplo": "node scripts/conteudo-exemplo.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {
