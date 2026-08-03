@@ -112,12 +112,24 @@ async function exigirSessao(req, res, next) {
 
   try {
     const dados = jwt.verify(token, segredo());
-    const tenant = await getPrisma().tenant.findUnique({ where: { id: dados.tid } });
-    if (!tenant || !tenant.active) {
+    const prisma = getPrisma();
+    // O usuario e lido a cada requisicao, e nao tirado do token: uma conta
+    // desativada ou uma senha recem-trocada precisam valer na hora, sem
+    // esperar a sessao expirar.
+    const [tenant, user] = await Promise.all([
+      prisma.tenant.findUnique({ where: { id: dados.tid } }),
+      prisma.user.findUnique({ where: { id: dados.sub } }),
+    ]);
+    if (!tenant || !tenant.active || !user || !user.active) {
       limparCookie(res);
       return res.redirect('/painel/entrar');
     }
-    req.sessao = { userId: dados.sub, nome: dados.nome, papel: dados.papel };
+    req.sessao = {
+      userId: user.id,
+      nome: user.name,
+      papel: user.role,
+      precisaTrocarSenha: user.mustChangePassword,
+    };
     req.tenant = tenant;
     next();
   } catch {
@@ -126,4 +138,58 @@ async function exigirSessao(req, res, next) {
   }
 }
 
-module.exports = { autenticar, criarCookie, limparCookie, exigirSessao, COOKIE };
+const MINIMO_SENHA = 8;
+
+/// Recusa senhas que qualquer lista de ataque tenta primeiro. Nao substitui
+/// tamanho minimo, mas evita o caso comum de trocar a senha entregue por
+/// "12345678" e achar que resolveu.
+const SENHAS_OBVIAS = new Set([
+  '12345678', '123456789', '1234567890', 'senha123', 'password', 'candidato',
+  'qwertyui', 'abc12345', '11111111', 'candidatoonline',
+]);
+
+/// Troca a senha exigindo a atual. Mesmo na troca obrigatoria a atual e
+/// pedida: sem isso, uma sessao esquecida aberta num aparelho emprestado
+/// deixaria qualquer um assumir a conta.
+async function trocarSenha({ userId, atual, nova, confirmacao, ip }) {
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return { erro: 'Sessão inválida. Entre novamente.' };
+
+  if (!(await bcrypt.compare(String(atual || ''), user.passwordHash))) {
+    return { erro: 'A senha atual está incorreta.' };
+  }
+
+  const senha = String(nova || '');
+  if (senha.length < MINIMO_SENHA) {
+    return { erro: `A nova senha precisa ter pelo menos ${MINIMO_SENHA} caracteres.` };
+  }
+  if (senha !== String(confirmacao || '')) {
+    return { erro: 'A confirmação não bate com a nova senha.' };
+  }
+  if (SENHAS_OBVIAS.has(senha.toLowerCase())) {
+    return { erro: 'Essa senha é fácil demais de adivinhar. Escolha outra.' };
+  }
+  if (await bcrypt.compare(senha, user.passwordHash)) {
+    return { erro: 'A nova senha precisa ser diferente da atual.' };
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: await bcrypt.hash(senha, 12),
+      mustChangePassword: false,
+      passwordSetAt: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: 'UPDATE', entity: 'User.password', entityId: user.id, ip },
+  });
+
+  return { ok: true };
+}
+
+module.exports = {
+  autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, COOKIE, MINIMO_SENHA,
+};

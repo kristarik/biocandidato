@@ -32,13 +32,19 @@ async function main() {
   const senha = gerarSenha();
   await prisma.user.update({
     where: { id: vinculo.userId },
-    data: { passwordHash: await bcrypt.hash(senha, 12) },
+    data: {
+      passwordHash: await bcrypt.hash(senha, 12),
+      // Senha redefinida tambem e temporaria: o caminho ate o dono passa por
+      // um canal que outras pessoas podem ler.
+      mustChangePassword: true,
+    },
   });
 
   console.log(`\nSenha redefinida para ${vinculo.tenant.name}.\n`);
   console.log(`  Painel   /painel/entrar`);
   console.log(`  Login    ${vinculo.user.email}`);
-  console.log(`  Senha    ${senha}\n`);
+  console.log(`  Senha    ${senha}  (temporaria)\n`);
+  console.log('No proximo acesso o painel exige a troca antes de liberar o restante.\n');
 }
 
 main()

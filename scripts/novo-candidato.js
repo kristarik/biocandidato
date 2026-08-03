@@ -118,6 +118,9 @@ async function main() {
         name: args.nome,
         role: 'CANDIDATE',
         passwordHash,
+        // Esta senha vai trafegar por WhatsApp ou telefone, entao vale para
+        // um acesso: o painel exige a troca antes de liberar qualquer tela.
+        mustChangePassword: true,
       },
     });
 
@@ -144,9 +147,9 @@ async function main() {
   console.log(`  Nome      ${resultado.tenant.name}`);
   console.log(`  WebApp    http://${dominio}/${slug}`);
   console.log(`  Login     ${email}`);
-  console.log(`  Senha     ${senha}`);
+  console.log(`  Senha     ${senha}  (temporaria)`);
   console.log('\nAnote a senha agora: ela e gravada com hash e nao pode ser lida depois.');
-  console.log('Oriente a candidata a troca-la no primeiro acesso.\n');
+  console.log('No primeiro acesso o painel exige a troca antes de liberar qualquer tela.\n');
 }
 
 main()

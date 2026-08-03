@@ -1,6 +1,8 @@
 const express = require('express');
 const { getPrisma } = require('./prisma-client');
-const { autenticar, criarCookie, limparCookie, exigirSessao } = require('./auth');
+const {
+  autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, MINIMO_SENHA,
+} = require('./auth');
 const vistas = require('./painel-views');
 
 const router = express.Router();
@@ -59,7 +61,57 @@ router.post('/sair', (req, res) => {
 // Tudo daqui para baixo exige sessao. O tenant vem do token, nunca da URL.
 router.use(exigirSessao);
 
+// Enquanto a senha entregue pelo Master nao for trocada, o painel inteiro fica
+// atras dessa tela. Bloquear so a interface nao bastaria: sem interceptar aqui,
+// um POST direto continuaria funcionando.
+router.use((req, res, next) => {
+  if (!req.sessao.precisaTrocarSenha) return next();
+  if (req.path === '/senha' || req.path === '/sair') return next();
+  res.redirect('/painel/senha');
+});
+
 router.get('/', (req, res) => res.redirect('/painel/inicio'));
+
+// ---------------------------------------------------------------------------
+// Senha
+// ---------------------------------------------------------------------------
+
+function mostrarSenha(req, res, erro) {
+  const obrigatoria = Boolean(req.sessao.precisaTrocarSenha);
+  res.type('html').send(
+    vistas.pagina({
+      titulo: obrigatoria ? 'Crie sua senha' : 'Trocar senha',
+      tenant: req.tenant,
+      aba: 'senha',
+      recado: erro ? null : recadoDaUrl(req),
+      corpo: vistas.telaSenha({
+        obrigatoria,
+        erro,
+        nome: req.sessao.nome,
+        minimo: MINIMO_SENHA,
+      }),
+    })
+  );
+}
+
+router.get('/senha', (req, res) => mostrarSenha(req, res));
+
+router.post('/senha', async (req, res, next) => {
+  try {
+    const resultado = await trocarSenha({
+      userId: req.sessao.userId,
+      atual: req.body.atual,
+      nova: req.body.nova,
+      confirmacao: req.body.confirmacao,
+      ip: req.ip,
+    });
+
+    if (resultado.erro) return mostrarSenha(req, res, resultado.erro);
+    voltar(res, '/painel/inicio', 'Senha alterada. Use a nova no próximo acesso.');
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Inicio

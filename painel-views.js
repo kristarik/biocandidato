@@ -35,7 +35,18 @@ const ESTILO = `
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .marca span { display: block; font-size: .72rem; font-weight: 500; color: var(--suave); }
-  .topo-linha form { margin-left: auto; }
+  .acoes-topo { margin-left: auto; display: flex; align-items: center; gap: .5rem; }
+  .acoes-topo .botao {
+    padding: .5rem .8rem; font-size: .85rem; text-decoration: none;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  /* Em tela estreita o rotulo sai, o botao fica. Escondê-lo por inteiro
+     deixaria o painel sem nenhum caminho para trocar a senha no celular —
+     e e no celular que a candidata usa o painel. */
+  @media (max-width: 560px) {
+    .acoes-topo .botao span { display: none; }
+    .acoes-topo .botao { padding: .5rem .62rem; }
+  }
   button.sair {
     background: #fdecec; color: var(--perigo); font-weight: 650;
   }
@@ -239,9 +250,15 @@ ${tagsDeIcone()}
     </a>
     <div class="divisor"></div>
     <div class="marca"><div>${esc(tenant.name)}</div><span>candidato.bio/${esc(tenant.slug)}</span></div>
-    <form method="post" action="/painel/sair">
-      <button class="sair" type="submit">Sair</button>
-    </form>
+    <div class="acoes-topo">
+      <a class="botao discreto" href="/painel/senha" title="Trocar senha" aria-label="Trocar senha">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+          <path d="M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-5 9a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm2.2-9H9.8V6a2.2 2.2 0 0 1 4.4 0v2Z"/>
+        </svg><span>Trocar senha</span></a>
+      <form method="post" action="/painel/sair">
+        <button class="sair" type="submit">Sair</button>
+      </form>
+    </div>
   </div>
 </header>
 <main>
@@ -652,6 +669,40 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
 </div>`;
 }
 
+function telaSenha({ obrigatoria, erro, nome, minimo }) {
+  return `<h1>${obrigatoria ? 'Crie sua senha' : 'Trocar senha'}</h1>
+
+${
+  obrigatoria
+    ? `<p class="recado alerta">
+        <strong>Olá, ${esc(nome)}. Antes de continuar, escolha uma senha sua.</strong>
+        A que você recebeu passou por WhatsApp ou e-mail e por isso não serve como
+        senha permanente — outras pessoas podem ter visto.
+      </p>`
+    : ''
+}
+${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
+
+<div class="cartao" style="max-width:34rem">
+  <form method="post" action="/painel/senha">
+    <label class="campo"><span>Senha atual</span>
+      <input type="password" name="atual" required autocomplete="current-password" autofocus>
+    </label>
+    <label class="campo"><span>Nova senha</span>
+      <input type="password" name="nova" required minlength="${minimo}" autocomplete="new-password">
+    </label>
+    <label class="campo"><span>Repita a nova senha</span>
+      <input type="password" name="confirmacao" required minlength="${minimo}" autocomplete="new-password">
+    </label>
+    <p class="vazio" style="margin-bottom:1rem">
+      Mínimo de ${minimo} caracteres. Evite datas de nascimento, o número da urna
+      e o nome da campanha — são os primeiros palpites de quem tenta invadir.
+    </p>
+    <button type="submit">Salvar nova senha</button>
+  </form>
+</div>`;
+}
+
 function telaConteudo({ tenant, propostas, redes, links, banners }) {
   const campo = (nome, rotulo, valor, tipo = 'text', extra = '') =>
     `<label class="campo"><span>${rotulo}</span>
@@ -807,4 +858,6 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 </div>`;
 }
 
-module.exports = { pagina, telaEntrar, telaInicio, telaApoiadores, telaConteudo, telaTurbinar };
+module.exports = {
+  pagina, telaEntrar, telaInicio, telaApoiadores, telaConteudo, telaTurbinar, telaSenha,
+};

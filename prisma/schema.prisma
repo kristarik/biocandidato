@@ -85,10 +85,16 @@ model User {
   role         UserRole @default(CANDIDATE)
   phone        String?  @db.VarChar(20)
 
-  active      Boolean   @default(true)
-  lastLoginAt DateTime? @map("last_login_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  /// Senha entregue pelo Master vale para um acesso. Enquanto isso for true,
+  /// o painel so deixa abrir a tela de troca — a senha que trafegou por
+  /// WhatsApp nao pode virar a senha permanente da conta.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+
+  active         Boolean   @default(true)
+  lastLoginAt    DateTime? @map("last_login_at")
+  passwordSetAt  DateTime? @map("password_set_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   tenants   TenantUser[]
   campaigns Campaign[]
