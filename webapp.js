@@ -209,14 +209,34 @@ function render(t) {
     --borda: #e2e2e6;
     --fundo: #fff;
     --nav: 66px;
+    --coluna: 480px;
   }
   /* O WebApp e sempre claro, mesmo com o sistema em modo escuro: a identidade
      visual do candidato precisa ser a mesma para todo eleitor. */
   * { box-sizing: border-box; }
+
+  /* No desktop o WebApp nao estica: vira uma coluna centralizada com largura
+     de celular, sobre um fundo tingido com a cor do candidato. O layout foi
+     desenhado para a mao, e esticado em tela larga ele se desfaz. */
+  html {
+    background: var(--fundo);
+    min-height: 100%;
+  }
   body {
-    margin: 0; background: var(--fundo); color: var(--texto);
+    margin: 0 auto; max-width: var(--coluna); min-height: 100vh;
+    background: var(--fundo); color: var(--texto);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5; padding-bottom: calc(var(--nav) + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 560px) {
+    html {
+      background:
+        linear-gradient(170deg,
+          color-mix(in srgb, var(--primaria) 14%, #eef0f4),
+          color-mix(in srgb, var(--secundaria) 10%, #eef0f4));
+      background-attachment: fixed;
+    }
+    body { box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 18px 60px rgba(0,0,0,.13); }
   }
   img { max-width: 100%; display: block; }
 
@@ -382,8 +402,12 @@ function render(t) {
   }
 
   /* ---------- menu estilo aplicativo ---------- */
+  /* Fixa na viewport, mas presa a largura da coluna: sem isso ela atravessaria
+     a tela inteira no desktop e romperia o formato. */
   .barra {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    position: fixed; bottom: 0; z-index: 20;
+    left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: var(--coluna);
     display: flex; background: var(--fundo); border-top: 1px solid var(--borda);
     padding-bottom: env(safe-area-inset-bottom);
   }
