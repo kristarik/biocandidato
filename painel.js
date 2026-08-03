@@ -1,5 +1,7 @@
 const express = require('express');
+const multer = require('multer');
 const { getPrisma } = require('./prisma-client');
+const midia = require('./midia');
 const {
   autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, MINIMO_SENHA,
 } = require('./auth');
@@ -7,6 +9,28 @@ const vistas = require('./painel-views');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: false, limit: '64kb' }));
+
+// Upload em memoria: a imagem e reduzida e vai direto para o banco, entao
+// nunca precisa tocar o disco — que na Hostinger seria apagado no proximo
+// deploy de qualquer forma.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: midia.ENTRADA_MAXIMA, files: 2 },
+});
+
+/// Recebe o arquivo de um campo, grava e devolve a URL publica. Devolve
+/// undefined quando nada foi enviado, para o chamador manter o valor atual.
+async function urlDoUpload(req, campo, tipo) {
+  const arquivo = req.files?.[campo]?.[0] || (req.file?.fieldname === campo ? req.file : null);
+  if (!arquivo?.buffer?.length) return undefined;
+  const { url } = await midia.salvar({
+    tenantId: req.tenant.id,
+    tipo,
+    buffer: arquivo.buffer,
+    createdById: req.sessao.userId,
+  });
+  return url;
+}
 
 const POR_PAGINA = 50;
 
@@ -586,13 +610,21 @@ router.get('/conteudo', async (req, res, next) => {
   }
 });
 
-router.post('/conteudo/perfil', async (req, res, next) => {
+const camposDeImagem = upload.fields([
+  { name: 'foto', maxCount: 1 },
+  { name: 'banner', maxCount: 1 },
+]);
+
+router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
   try {
     const prisma = getPrisma();
     const b = req.body;
     const hex = (v, padrao) => (/^#[0-9a-fA-F]{6}$/.test(v || '') ? v : padrao);
 
     const antes = req.tenant;
+    const fotoNova = await urlDoUpload(req, 'foto', 'foto');
+    const bannerNovo = await urlDoUpload(req, 'banner', 'banner');
+
     const depois = {
       name: texto(b.name, 120) || antes.name,
       number: texto(b.number, 10),
@@ -601,8 +633,9 @@ router.post('/conteudo/perfil', async (req, res, next) => {
       state: texto(b.state, 2)?.toUpperCase() || null,
       slogan: texto(b.slogan, 200),
       bio: texto(b.bio, 1200),
-      photoUrl: texto(b.photoUrl, 500),
-      bannerUrl: texto(b.bannerUrl, 500),
+      // Sem arquivo novo, mantem o atual; a caixa "remover" limpa o campo.
+      photoUrl: b.removerFoto === '1' ? null : fotoNova ?? antes.photoUrl,
+      bannerUrl: b.removerBanner === '1' ? null : bannerNovo ?? antes.bannerUrl,
       primaryColor: hex(b.primaryColor, antes.primaryColor),
       secondaryColor: hex(b.secondaryColor, antes.secondaryColor),
     };
@@ -631,12 +664,12 @@ router.post('/conteudo/perfil', async (req, res, next) => {
 /// Fabrica das rotas de adicionar e remover. O remover usa deleteMany filtrado
 /// por tenantId: com delete simples, um id forjado apagaria conteudo de outro
 /// candidato, ja que o MariaDB nao tem Row Level Security.
-function recurso(nome, modelo, montarDados) {
-  router.post(`/conteudo/${nome}`, async (req, res, next) => {
+function recurso(nome, modelo, montarDados, meioDeCampo = []) {
+  router.post(`/conteudo/${nome}`, ...meioDeCampo, async (req, res, next) => {
     try {
       const prisma = getPrisma();
       const tenantId = req.tenant.id;
-      const dados = montarDados(req.body);
+      const dados = await montarDados(req.body, req);
       if (!dados) return voltar(res, '/painel/conteudo', 'Preencha os campos obrigatórios.', 'erro');
 
       const ultima = await prisma[modelo].findFirst({
@@ -688,16 +721,44 @@ recurso('rede', 'socialLink', (b) => {
   return url && platform ? { platform, url } : null;
 });
 
-recurso('link', 'importantLink', (b) => {
-  const label = texto(b.label, 120);
-  const url = texto(b.url, 500);
-  return label && url ? { label, url, iconUrl: texto(b.iconUrl, 500) } : null;
-});
+recurso(
+  'link',
+  'importantLink',
+  async (b, req) => {
+    const label = texto(b.label, 120);
+    const url = texto(b.url, 500);
+    if (!label || !url) return null;
+    return { label, url, iconUrl: (await urlDoUpload(req, 'icone', 'icone')) || null };
+  },
+  [upload.fields([{ name: 'icone', maxCount: 1 }])]
+);
 
-recurso('banner', 'banner', (b) => {
-  const imageUrl = texto(b.imageUrl, 500);
-  const slot = ['TOPO', 'MEIO', 'RODAPE'].includes(b.slot) ? b.slot : 'MEIO';
-  return imageUrl ? { imageUrl, slot, linkUrl: texto(b.linkUrl, 500) } : null;
+recurso(
+  'banner',
+  'banner',
+  async (b, req) => {
+    const imageUrl = await urlDoUpload(req, 'imagem', 'divulgacao');
+    if (!imageUrl) return null;
+    const slot = ['TOPO', 'MEIO', 'RODAPE'].includes(b.slot) ? b.slot : 'MEIO';
+    return { imageUrl, slot, linkUrl: texto(b.linkUrl, 500) };
+  },
+  [upload.fields([{ name: 'imagem', maxCount: 1 }])]
+);
+
+/// Erro de imagem vira recado na tela, nao pagina de erro: a pessoa acabou de
+/// escolher um arquivo e precisa saber o que houve com ele.
+router.use((err, req, res, next) => {
+  if (err instanceof midia.ErroMidia) {
+    return voltar(res, '/painel/conteudo', err.message, 'erro');
+  }
+  if (err instanceof multer.MulterError) {
+    const recado =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? `A imagem passa de ${midia.ENTRADA_MAXIMA / 1048576} MB. Reduza antes de enviar.`
+        : 'Não foi possível receber o arquivo. Tente novamente.';
+    return voltar(res, '/painel/conteudo', recado, 'erro');
+  }
+  next(err);
 });
 
 module.exports = router;

@@ -9,6 +9,7 @@ const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
 const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
 const descadastro = require('./descadastro');
+const midia = require('./midia');
 
 const app = express();
 
@@ -42,6 +43,11 @@ app.get('/', (req, res) => {
 // continua existindo — monitoramento externo pode depender dele.
 app.get('/status', (req, res) => {
   res.json({ app: 'Candidato Online', status: 'online', version: '0.1.0' });
+});
+
+// Imagens enviadas pelo painel. Ficam no banco, entao sobrevivem ao deploy.
+app.get('/midia/:id', (req, res, next) => {
+  midia.servir(req, res).catch(next);
 });
 
 app.get('/health', (req, res) => {

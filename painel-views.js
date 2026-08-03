@@ -105,7 +105,20 @@ const ESTILO = `
   .etiqueta.pendente { background: #fdf2e7; color: #a15c07; }
 
   label.campo { display: block; margin-bottom: .85rem; }
-  label.campo > span {
+  .campo > small { display: block; margin-top: .35rem; font-size: .78rem; color: var(--suave); }
+  input[type=file] {
+    width: 100%; padding: .5rem; border: 1px dashed var(--borda); border-radius: 8px;
+    background: var(--branco); font: inherit; font-size: .85rem;
+  }
+  .previa { display: flex; align-items: center; gap: .8rem; margin-bottom: .55rem; }
+  .previa img {
+    width: 76px; height: 56px; object-fit: contain; border-radius: 8px;
+    background: #f1f3f7; border: 1px solid var(--borda);
+  }
+  .previa .remover { display: flex; align-items: center; gap: .35rem; font-size: .84rem; color: var(--perigo); }
+  .previa .remover input { width: auto; }
+  div.campo { display: block; margin-bottom: .85rem; }
+  div.campo > span, label.campo > span {
     display: block; margin-bottom: .3rem; font-size: .78rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: .04em; color: var(--suave);
   }
@@ -768,6 +781,25 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
     `<label class="campo"><span>${rotulo}</span>
       <input type="${tipo}" name="${nome}" value="${esc(valor ?? '')}" ${extra}></label>`;
 
+  /// Mostra o que ja esta no ar antes de pedir o arquivo novo: sem a previa,
+  /// a pessoa nao sabe se o campo esta vazio ou se a imagem simplesmente nao
+  /// aparece no formulario.
+  const campoImagem = (nome, rotulo, atual, campoRemover) => `<div class="campo">
+    <span>${rotulo}</span>
+    ${
+      atual
+        ? `<div class="previa">
+            <img src="${esc(atual)}" alt="">
+            <label class="remover">
+              <input type="checkbox" name="${campoRemover}" value="1"> Remover
+            </label>
+          </div>`
+        : '<p class="vazio" style="margin:0 0 .5rem">Nenhuma imagem enviada ainda.</p>'
+    }
+    <input type="file" name="${nome}" accept="image/jpeg,image/png,image/gif,image/webp">
+    <small>JPG, PNG, GIF ou WebP, até 8 MB. A imagem é reduzida e convertida automaticamente.</small>
+  </div>`;
+
   const listaPropostas = propostas.length
     ? propostas
         .map(
@@ -831,7 +863,7 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 
 <div class="cartao">
   <h2>Identidade</h2>
-  <form method="post" action="/painel/conteudo/perfil">
+  <form method="post" action="/painel/conteudo/perfil" enctype="multipart/form-data">
     ${campo('name', 'Nome', tenant.name, 'text', 'required maxlength="120"')}
     <div class="linha">
       ${campo('number', 'Número', tenant.number, 'text', 'maxlength="10"')}
@@ -845,8 +877,8 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
     <label class="campo"><span>Resumo (aparece abaixo do nome)</span>
       <textarea name="bio" maxlength="1200">${esc(tenant.bio || '')}</textarea></label>
     <div class="linha">
-      ${campo('photoUrl', 'URL da foto', tenant.photoUrl, 'url')}
-      ${campo('bannerUrl', 'URL do banner do topo', tenant.bannerUrl, 'url')}
+      ${campoImagem('foto', 'Foto do candidato', tenant.photoUrl, 'removerFoto')}
+      ${campoImagem('banner', 'Banner do topo', tenant.bannerUrl, 'removerBanner')}
     </div>
     <div class="linha">
       ${campo('primaryColor', 'Cor principal', cor(tenant.primaryColor, '#1e40af'), 'color')}
@@ -889,12 +921,16 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 <div class="cartao">
   <h2>Links importantes</h2>
   ${listaLinks}
-  <form method="post" action="/painel/conteudo/link" style="margin-top:1rem">
+  <form method="post" action="/painel/conteudo/link" enctype="multipart/form-data" style="margin-top:1rem">
     <div class="linha">
       ${campo('label', 'Rótulo', '', 'text', 'required maxlength="120"')}
       ${campo('url', 'Endereço', '', 'url', 'required placeholder="https://..."')}
     </div>
-    ${campo('iconUrl', 'URL do ícone (opcional)', '', 'url')}
+    <div class="campo">
+      <span>Ícone (opcional)</span>
+      <input type="file" name="icone" accept="image/jpeg,image/png,image/gif,image/webp">
+      <small>Sem ícone, aparece a primeira letra do rótulo.</small>
+    </div>
     <button type="submit">Adicionar link</button>
   </form>
 </div>
@@ -902,7 +938,7 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 <div class="cartao">
   <h2>Banners de divulgação</h2>
   ${listaBanners}
-  <form method="post" action="/painel/conteudo/banner" style="margin-top:1rem">
+  <form method="post" action="/painel/conteudo/banner" enctype="multipart/form-data" style="margin-top:1rem">
     <div class="linha">
       <label class="campo"><span>Posição</span>
         <select name="slot">
@@ -910,7 +946,10 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
           <option value="RODAPE">Perto do rodapé</option>
         </select>
       </label>
-      ${campo('imageUrl', 'URL da imagem', '', 'url', 'required placeholder="https://..."')}
+      <div class="campo">
+        <span>Imagem</span>
+        <input type="file" name="imagem" accept="image/jpeg,image/png,image/gif,image/webp" required>
+      </div>
     </div>
     ${campo('linkUrl', 'Link ao clicar (opcional)', '', 'url')}
     <button type="submit">Adicionar banner</button>

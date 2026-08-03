@@ -51,6 +51,7 @@ model Tenant {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   credits       CreditTransaction[]
+  midias        MediaFile[]
   users         TenantUser[]
   supporters    Supporter[]
   campaigns     Campaign[]
@@ -556,6 +557,32 @@ model Proposal {
   @@index([tenantId, position])
   @@index([tenantId, published])
   @@map("proposals")
+}
+
+/// Imagem enviada pelo painel, guardada no proprio banco.
+///
+/// Disco nao serve aqui: a Hostinger refaz o checkout do repositorio a cada
+/// deploy, e arquivo gravado na pasta do app sumiria na proxima publicacao.
+/// No banco a imagem sobrevive ao deploy e vai junto no backup.
+model MediaFile {
+  id       String  @id @default(uuid()) @db.Char(36)
+  tenantId String? @map("tenant_id") @db.Char(36)
+
+  /// foto, banner, icone ou divulgacao — de onde a imagem veio.
+  kind   String  @db.VarChar(30)
+  mime   String  @db.VarChar(60)
+  size   Int
+  width  Int?
+  height Int?
+  data   Bytes
+
+  createdById String?  @map("created_by_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("media_files")
 }
 
 enum CreditType {
