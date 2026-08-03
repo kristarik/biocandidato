@@ -65,30 +65,98 @@ router.get('/', (req, res) => res.redirect('/painel/inicio'));
 // Inicio
 // ---------------------------------------------------------------------------
 
+const DIA = 86_400_000;
+
+/// Variacao percentual entre dois periodos. Sem base anterior nao existe
+/// variacao — devolve null em vez de fingir 100%.
+function variacao(atual, anterior) {
+  if (!anterior) return atual > 0 ? null : 0;
+  return Math.round(((atual - anterior) / anterior) * 100);
+}
+
+const NOME_ETAPA = {
+  PENDENTE: 'Informou o número',
+  CONFIRMADO: 'Confirmou o código',
+  COMPLETO: 'Completou o cadastro',
+};
+
 router.get('/inicio', async (req, res, next) => {
   try {
     const prisma = getPrisma();
     const tenantId = req.tenant.id;
     const agora = new Date();
     const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-    const semana = new Date(hoje.getTime() - 6 * 86_400_000);
-    const mes = new Date(hoje.getTime() - 29 * 86_400_000);
+    const inicio7 = new Date(hoje.getTime() - 6 * DIA);
+    const inicio14 = new Date(hoje.getTime() - 13 * DIA);
+    const inicio30 = new Date(hoje.getTime() - 29 * DIA);
+    const inicio60 = new Date(hoje.getTime() - 59 * DIA);
 
-    const contar = (extra = {}) => prisma.supporter.count({ where: { tenantId, deletedAt: null, ...extra } });
+    const contar = (extra = {}) =>
+      prisma.supporter.count({ where: { tenantId, deletedAt: null, ...extra } });
 
-    const [total, contHoje, contSemana, contMes, confirmados, push, ultimos] = await Promise.all([
+    const [
+      total, contHoje, cont7, cont7Anterior, cont30, cont30Anterior,
+      confirmados, completos, push, porDia, porStatus, porOrigem, porCidade, ultimos,
+    ] = await Promise.all([
       contar(),
       contar({ createdAt: { gte: hoje } }),
-      contar({ createdAt: { gte: semana } }),
-      contar({ createdAt: { gte: mes } }),
+      contar({ createdAt: { gte: inicio7 } }),
+      contar({ createdAt: { gte: inicio14, lt: inicio7 } }),
+      contar({ createdAt: { gte: inicio30 } }),
+      contar({ createdAt: { gte: inicio60, lt: inicio30 } }),
       contar({ smsValidated: true }),
+      contar({ status: 'COMPLETO' }),
       contar({ pushActive: true }),
+      // Agrupar por dia no banco: o groupBy do Prisma agrupa pelo instante
+      // exato, o que daria um balde por cadastro em vez de um por dia.
+      prisma.$queryRaw`
+        SELECT DATE(created_at) AS dia, COUNT(*) AS total
+        FROM supporters
+        WHERE tenant_id = ${tenantId} AND deleted_at IS NULL AND created_at >= ${inicio30}
+        GROUP BY dia ORDER BY dia`,
+      prisma.supporter.groupBy({
+        by: ['status'],
+        where: { tenantId, deletedAt: null },
+        _count: { _all: true },
+      }),
+      prisma.supporter.groupBy({
+        by: ['origin'],
+        where: { tenantId, deletedAt: null, origin: { not: null } },
+        _count: { _all: true },
+        orderBy: { _count: { origin: 'desc' } },
+        take: 6,
+      }),
+      prisma.supporter.groupBy({
+        by: ['city'],
+        where: { tenantId, deletedAt: null, city: { not: null } },
+        _count: { _all: true },
+        orderBy: { _count: { city: 'desc' } },
+        take: 6,
+      }),
       prisma.supporter.findMany({
         where: { tenantId, deletedAt: null },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
     ]);
+
+    // Dias sem cadastro precisam existir na serie, senao a linha "pula" o
+    // vazio e sugere movimento que nao houve.
+    const porChave = new Map(
+      porDia.map((r) => [String(r.dia).slice(0, 10), Number(r.total)])
+    );
+    const serie = Array.from({ length: 30 }, (_, i) => {
+      const data = new Date(inicio30.getTime() + i * DIA);
+      const chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+      return { data, valor: porChave.get(chave) || 0 };
+    });
+
+    const contagemStatus = Object.fromEntries(
+      porStatus.map((s) => [s.status, s._count._all])
+    );
+    const funil = ['PENDENTE', 'CONFIRMADO', 'COMPLETO']
+      .map((s) => ({ rotulo: NOME_ETAPA[s], valor: contagemStatus[s] || 0 }))
+      .filter((f, _, todos) => todos.some((t) => t.valor > 0));
 
     res.type('html').send(
       vistas.pagina({
@@ -97,7 +165,21 @@ router.get('/inicio', async (req, res, next) => {
         aba: 'inicio',
         recado: recadoDaUrl(req),
         corpo: vistas.telaInicio({
-          numeros: { total, hoje: contHoje, semana: contSemana, mes: contMes, confirmados, push },
+          numeros: {
+            total,
+            hoje: contHoje,
+            semana: cont7,
+            mes: cont30,
+            confirmados,
+            completos,
+            push,
+            deltaSemana: variacao(cont7, cont7Anterior),
+            deltaMes: variacao(cont30, cont30Anterior),
+          },
+          serie,
+          funil,
+          origens: porOrigem.map((o) => ({ rotulo: o.origin, valor: o._count._all })),
+          cidades: porCidade.map((c) => ({ rotulo: c.city, valor: c._count._all })),
           ultimos,
         }),
       })
@@ -110,6 +192,27 @@ router.get('/inicio', async (req, res, next) => {
 // ---------------------------------------------------------------------------
 // Apoiadores
 // ---------------------------------------------------------------------------
+
+const TETO_BUSCA = 5000;
+
+/// Ids que casam com o texto buscado, por nome ou por telefone.
+async function idsDaBusca(prisma, tenantId, termo) {
+  const alvo = `%${termo}%`;
+  const digitos = termo.replace(/\D/g, '');
+
+  const linhas = digitos
+    ? await prisma.$queryRaw`
+        SELECT id FROM supporters
+        WHERE tenant_id = ${tenantId} AND deleted_at IS NULL
+          AND (name LIKE ${alvo} OR phone LIKE ${`%${digitos}%`})
+        LIMIT ${TETO_BUSCA}`
+    : await prisma.$queryRaw`
+        SELECT id FROM supporters
+        WHERE tenant_id = ${tenantId} AND deleted_at IS NULL AND name LIKE ${alvo}
+        LIMIT ${TETO_BUSCA}`;
+
+  return linhas.map((l) => l.id);
+}
 
 router.get('/apoiadores', async (req, res, next) => {
   try {
@@ -126,18 +229,20 @@ router.get('/apoiadores', async (req, res, next) => {
     const where = { tenantId, deletedAt: null };
     if (filtros.cidade) where.city = filtros.cidade;
     if (filtros.status) where.status = filtros.status;
-    if (filtros.origem) where.origin = { contains: filtros.origem };
+    if (filtros.origem) where.origin = filtros.origem;
+
+    // A busca textual precisa de SQL puro: o `contains` do Prisma envia o
+    // parametro com colacao binaria e o MariaDB recusa comparar com a coluna
+    // utf8mb4_unicode_ci ("Illegal mix of collations"). O LIKE cru respeita a
+    // colacao da coluna, o que tambem mantem a busca sem diferenciar
+    // maiusculas de minusculas.
     if (filtros.busca) {
-      const digitos = filtros.busca.replace(/\D/g, '');
-      where.OR = [
-        { name: { contains: filtros.busca } },
-        ...(digitos ? [{ phone: { contains: digitos } }] : []),
-      ];
+      where.id = { in: await idsDaBusca(prisma, tenantId, filtros.busca) };
     }
 
     const paginaAtual = Math.max(1, Number(req.query.pagina) || 1);
 
-    const [total, apoiadores, agrupadoCidades] = await Promise.all([
+    const [total, apoiadores, agrupadoCidades, agrupadoOrigens] = await Promise.all([
       prisma.supporter.count({ where }),
       prisma.supporter.findMany({
         where,
@@ -148,6 +253,11 @@ router.get('/apoiadores', async (req, res, next) => {
       prisma.supporter.groupBy({
         by: ['city'],
         where: { tenantId, deletedAt: null, city: { not: null } },
+        _count: true,
+      }),
+      prisma.supporter.groupBy({
+        by: ['origin'],
+        where: { tenantId, deletedAt: null, origin: { not: null } },
         _count: true,
       }),
     ]);
@@ -162,6 +272,7 @@ router.get('/apoiadores', async (req, res, next) => {
           apoiadores,
           filtros,
           cidades: agrupadoCidades.map((c) => c.city).filter(Boolean).sort(),
+          origens: agrupadoOrigens.map((o) => o.origin).filter(Boolean).sort(),
           total,
           pagina: paginaAtual,
           paginas: Math.max(1, Math.ceil(total / POR_PAGINA)),

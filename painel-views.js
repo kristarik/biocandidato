@@ -1,4 +1,5 @@
 const { esc, cor } = require('./html');
+const graficos = require('./painel-graficos');
 
 const ESTILO = `
   :root {
@@ -101,6 +102,49 @@ const ESTILO = `
   .item .corpo { flex: 1; min-width: 0; }
   .item .corpo strong { display: block; }
   .item .corpo small { color: var(--suave); word-break: break-all; }
+
+  /* ---------- dashboard ---------- */
+  .heroi {
+    background: var(--branco); border: 1px solid var(--borda); border-radius: 12px;
+    padding: 1.4rem 1.5rem; margin-bottom: .85rem;
+  }
+  .heroi .rotulo {
+    font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--suave);
+  }
+  .heroi .figura { font-size: 3.25rem; font-weight: 650; line-height: 1.05; letter-spacing: -.035em; }
+  .heroi .apoio { color: var(--suave); font-size: .87rem; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .7rem; margin-bottom: 1.25rem; }
+  .kpi { background: var(--branco); border: 1px solid var(--borda); border-radius: 12px; padding: .9rem 1rem; }
+  .kpi .rotulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--suave); }
+  .kpi .valor { font-size: 1.6rem; font-weight: 650; letter-spacing: -.03em; line-height: 1.2; }
+  .kpi .delta { font-size: .76rem; font-weight: 600; }
+  .kpi .delta.sobe { color: #006300; }
+  .kpi .delta.desce { color: #b42318; }
+  .kpi .delta.igual { color: var(--suave); }
+
+  .duplo { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+  .grafico-caixa { position: relative; }
+  svg.gr { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.gr .alvo, svg.gr .alvo-barra { cursor: default; }
+  .legenda-eixo { font-size: .76rem; color: var(--suave); margin: .1rem 0 .9rem; }
+
+  .dica {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: #16181d; color: #fff; padding: .4rem .6rem; border-radius: 7px;
+    font-size: .78rem; white-space: nowrap; transform: translate(-50%, -130%); z-index: 5;
+  }
+  .dica b { font-weight: 650; }
+
+  .tabela-gemea { margin-top: .9rem; }
+  .tabela-gemea summary {
+    cursor: pointer; font-size: .8rem; color: var(--suave); list-style: none;
+    display: inline-flex; align-items: center; gap: .3rem;
+  }
+  .tabela-gemea summary::before { content: '▸'; font-size: .7rem; }
+  .tabela-gemea[open] summary::before { content: '▾'; }
+  .tabela-gemea table { margin-top: .6rem; }
+  .tabela-gemea td { font-variant-numeric: tabular-nums; }
 `;
 
 function pagina({ titulo, tenant, aba, corpo, recado }) {
@@ -192,10 +236,27 @@ function etiquetaStatus(status) {
   return `<span class="etiqueta ${classe}">${esc(status)}</span>`;
 }
 
-function telaInicio({ numeros, ultimos }) {
-  const cartaoNumero = (rotulo, valor) =>
-    `<div class="numero"><div class="valor">${valor}</div><div class="rotulo">${rotulo}</div></div>`;
+/// Cor da variacao = direcao x se subir e bom. Aqui subir e sempre bom, mas o
+/// simbolo e o texto do periodo acompanham para o sinal nao depender so da cor.
+function kpi(rotulo, valor, delta) {
+  let marca = '';
+  if (delta && delta.pct === null) {
+    // Sem periodo anterior nao ha variacao: uma seta aqui inventaria
+    // tendencia onde so existe ausencia de historico.
+    marca = '<div class="delta igual" style="font-weight:500">sem período anterior</div>';
+  } else if (delta) {
+    const classe = delta.pct > 0 ? 'sobe' : delta.pct < 0 ? 'desce' : 'igual';
+    const seta = delta.pct > 0 ? '↑' : delta.pct < 0 ? '↓' : '→';
+    marca = `<div class="delta ${classe}">${seta} ${Math.abs(delta.pct)}% <span style="font-weight:500">${esc(delta.periodo)}</span></div>`;
+  }
+  return `<div class="kpi">
+    <div class="rotulo">${esc(rotulo)}</div>
+    <div class="valor">${valor}</div>
+    ${marca}
+  </div>`;
+}
 
+function telaInicio({ numeros, serie, funil, origens, cidades, ultimos }) {
   const linhas = ultimos.length
     ? ultimos
         .map(
@@ -210,15 +271,66 @@ function telaInicio({ numeros, ultimos }) {
         .join('')
     : '<tr><td colspan="5" class="vazio">Nenhum apoiador cadastrado ainda.</td></tr>';
 
+  const caixaGrafico = (titulo, legenda, svg, gemea) => `<div class="cartao">
+    <h2>${esc(titulo)}</h2>
+    ${legenda ? `<p class="legenda-eixo">${esc(legenda)}</p>` : ''}
+    <div class="grafico-caixa">${svg}<div class="dica"></div></div>
+    ${gemea || ''}
+  </div>`;
+
+  const barrasFunil = graficos.barras(funil, { ordinal: true });
+  const barrasOrigem = graficos.barras(origens);
+  const barrasCidades = graficos.barras(cidades);
+
   return `<h1>Início</h1>
-<div class="numeros">
-  ${cartaoNumero('Total de apoiadores', numeros.total)}
-  ${cartaoNumero('Cadastros hoje', numeros.hoje)}
-  ${cartaoNumero('Últimos 7 dias', numeros.semana)}
-  ${cartaoNumero('Últimos 30 dias', numeros.mes)}
-  ${cartaoNumero('SMS confirmados', numeros.confirmados)}
-  ${cartaoNumero('Push ativos', numeros.push)}
+
+<div class="heroi">
+  <div class="rotulo">Total de apoiadores</div>
+  <div class="figura">${numeros.total.toLocaleString('pt-BR')}</div>
+  <div class="apoio">${numeros.completos.toLocaleString('pt-BR')} com cadastro completo · ${numeros.confirmados.toLocaleString('pt-BR')} com número confirmado</div>
 </div>
+
+<div class="kpis">
+  ${kpi('Hoje', numeros.hoje)}
+  ${kpi('Últimos 7 dias', numeros.semana, { pct: numeros.deltaSemana, periodo: 'vs. 7 anteriores' })}
+  ${kpi('Últimos 30 dias', numeros.mes, { pct: numeros.deltaMes, periodo: 'vs. 30 anteriores' })}
+  ${kpi('Push ativos', numeros.push)}
+</div>
+
+${caixaGrafico(
+  'Cadastros por dia',
+  'Últimos 30 dias',
+  graficos.areaCadastros(serie),
+  serie.length
+    ? graficos.tabela(
+        ['Dia', 'Cadastros'],
+        serie.filter((p) => p.valor > 0).map((p) => [graficos.diaCurto(p.data), String(p.valor)])
+      )
+    : ''
+)}
+
+<div class="duplo">
+  ${caixaGrafico(
+    'Funil de cadastro',
+    'Cada etapa mostra em que ponto o apoiador parou',
+    barrasFunil || graficos.semDados(720, 120, 'Nenhum cadastro ainda.'),
+    barrasFunil ? graficos.tabela(['Etapa', 'Pessoas'], funil.map((f) => [f.rotulo, String(f.valor)])) : ''
+  )}
+  ${caixaGrafico(
+    'De onde vieram',
+    'Origem registrada no momento do cadastro',
+    barrasOrigem || graficos.semDados(720, 120, 'Sem origem registrada ainda.'),
+    barrasOrigem ? graficos.tabela(['Origem', 'Pessoas'], origens.map((o) => [o.rotulo, String(o.valor)])) : ''
+  )}
+</div>
+
+${caixaGrafico(
+  'Cidades com mais apoiadores',
+  'A cidade vem do CEP informado na última etapa do cadastro',
+  barrasCidades || graficos.semDados(720, 120, 'Nenhuma cidade informada ainda.'),
+  barrasCidades ? graficos.tabela(['Cidade', 'Pessoas'], cidades.map((c) => [c.rotulo, String(c.valor)])) : ''
+)}
+
 <div class="cartao">
   <h2>Últimos cadastros</h2>
   <div class="tabela-rolavel">
@@ -227,10 +339,58 @@ function telaInicio({ numeros, ultimos }) {
       <tbody>${linhas}</tbody>
     </table>
   </div>
-</div>`;
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.grafico-caixa').forEach(function (caixa) {
+    var dica = caixa.querySelector('.dica');
+    var svg = caixa.querySelector('svg');
+    var mira = caixa.querySelector('.mira');
+    if (!dica || !svg) return;
+
+    function mostrar(rotulo, valor, clienteX, clienteY) {
+      var r = caixa.getBoundingClientRect();
+      dica.innerHTML = rotulo + ' · <b>' + valor + '</b>';
+      dica.style.left = (clienteX - r.left) + 'px';
+      dica.style.top = (clienteY - r.top) + 'px';
+      dica.style.opacity = '1';
+    }
+    function esconder() {
+      dica.style.opacity = '0';
+      if (mira) mira.setAttribute('opacity', '0');
+    }
+
+    // Pontos da area: a mira acompanha o dia sob o cursor.
+    caixa.querySelectorAll('.alvo').forEach(function (alvo) {
+      alvo.addEventListener('pointerenter', function (e) {
+        var x = alvo.getAttribute('data-x');
+        if (mira) {
+          mira.setAttribute('x1', x);
+          mira.setAttribute('x2', x);
+          mira.setAttribute('opacity', '1');
+        }
+        var caixaSvg = svg.getBoundingClientRect();
+        var vb = svg.viewBox.baseVal;
+        var px = caixaSvg.left + (Number(x) / vb.width) * caixaSvg.width;
+        mostrar(alvo.getAttribute('data-rotulo'), alvo.getAttribute('data-valor'), px, e.clientY);
+      });
+    });
+
+    // Barras: alvo cobre a linha inteira, nao so o retangulo colorido.
+    caixa.querySelectorAll('.barra').forEach(function (grupo) {
+      grupo.addEventListener('pointermove', function (e) {
+        mostrar(grupo.getAttribute('data-rotulo'), grupo.getAttribute('data-valor'), e.clientX, e.clientY);
+      });
+    });
+
+    caixa.addEventListener('pointerleave', esconder);
+  });
+})();
+</script>`;
 }
 
-function telaApoiadores({ apoiadores, filtros, cidades, total, pagina: p, paginas }) {
+function telaApoiadores({ apoiadores, filtros, cidades, origens, total, pagina: p, paginas }) {
   const linhas = apoiadores.length
     ? apoiadores
         .map(
@@ -277,7 +437,9 @@ function telaApoiadores({ apoiadores, filtros, cidades, total, pagina: p, pagina
       </select>
     </label>
     <label class="campo"><span>Origem</span>
-      <input type="text" name="origem" value="${esc(filtros.origem || '')}" placeholder="instagram, qrcode...">
+      <select name="origem"><option value="">Todas</option>${origens
+        .map((o) => `<option value="${esc(o)}"${filtros.origem === o ? ' selected' : ''}>${esc(o)}</option>`)
+        .join('')}</select>
     </label>
     <div class="acoes">
       <button type="submit">Filtrar</button>

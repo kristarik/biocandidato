@@ -13,6 +13,10 @@ const adapter = new PrismaMariaDb({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   connectionLimit: 5,
+  // As tabelas usam utf8mb4_unicode_ci. Sem fixar isso, o driver envia os
+  // parametros como utf8mb4_bin e o MariaDB recusa qualquer LIKE com
+  // "Illegal mix of collations" — o que derrubaria as buscas do CRM.
+  collation: 'UTF8MB4_UNICODE_CI',
 });
 
 let prisma;
