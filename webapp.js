@@ -447,7 +447,7 @@ ${links}
 ${blocoBanner(bannerPor('RODAPE'))}
 ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 
-<footer>Voto.IO</footer>
+<footer>Candidato Online</footer>
 
 <dialog id="lightbox">
   <div class="conteudo"><h3></h3><p></p></div>

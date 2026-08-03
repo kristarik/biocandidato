@@ -1,7 +1,7 @@
 # CRM ELEITORAL — Arquitetura (MVP v1)
 
-## Nome interno
-**Voto.IO**
+## Nome
+**Candidato Online**
 
 ## Objetivo
 Criar uma plataforma SaaS onde cada candidato possua um WebApp personalizado para captar apoiadores, gerenciar relacionamento e comunicar sua base através de Push Notification, SMS, RCS e futuramente WhatsApp.

@@ -2,7 +2,7 @@
   "name": "biocandidato",
   "version": "0.1.0",
   "private": true,
-  "description": "Voto.IO - CRM Eleitoral (MVP)",
+  "description": "Candidato Online - CRM Eleitoral (MVP)",
   "main": "server.js",
   "engines": {
     "node": ">=20"

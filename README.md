@@ -1,9 +1,9 @@
-# Voto.IO — CRM Eleitoral
+# Candidato Online — CRM Eleitoral
 
 Plataforma SaaS multi-tenant onde cada candidato tem um WebApp para captar
 apoiadores e comunicar sua base via Push, SMS e RCS.
 
-Arquitetura completa: [CRM_Eleitoral_VotoIO_Arquitetura_MVP.md](CRM_Eleitoral_VotoIO_Arquitetura_MVP.md)
+Arquitetura completa: [CRM_Eleitoral_CandidatoOnline_Arquitetura_MVP.md](CRM_Eleitoral_CandidatoOnline_Arquitetura_MVP.md)
 
 ## Rodando localmente
 

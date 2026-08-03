@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
 app.get('/', (req, res) => {
-  res.json({ app: 'Voto.IO', status: 'online', version: '0.1.0' });
+  res.json({ app: 'Candidato Online', status: 'online', version: '0.1.0' });
 });
 
 app.get('/health', (req, res) => {
@@ -136,5 +136,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Voto.IO ouvindo em http://${HOST}:${PORT}`);
+  console.log(`Candidato Online ouvindo em http://${HOST}:${PORT}`);
 });
