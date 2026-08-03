@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const painel = require('./painel');
+const landing = require('./landing');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
 const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
@@ -31,6 +32,12 @@ const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
 app.get('/', (req, res) => {
+  res.type('html').send(landing.render());
+});
+
+// O status em JSON saiu da raiz para dar lugar a pagina de vendas, mas
+// continua existindo — monitoramento externo pode depender dele.
+app.get('/status', (req, res) => {
   res.json({ app: 'Candidato Online', status: 'online', version: '0.1.0' });
 });
 
