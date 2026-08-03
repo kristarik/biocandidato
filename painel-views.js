@@ -22,7 +22,18 @@ const ESTILO = `
     max-width: 1040px; margin: 0 auto; padding: .85rem 1.25rem;
     display: flex; align-items: center; gap: 1rem;
   }
-  .marca { font-weight: 700; letter-spacing: -.01em; }
+  .logo-marca { height: 30px; width: auto; flex: 0 0 auto; }
+  /* Em tela estreita a logo cede lugar: o nome do candidato e o que importa
+     no topo, e os dois juntos espremeriam o botao Sair. */
+  @media (max-width: 480px) { .logo-marca { display: none; } }
+  .divisor {
+    width: 1px; align-self: stretch; background: var(--borda); margin: 0 .15rem;
+  }
+  @media (max-width: 480px) { .divisor { display: none; } }
+  .marca { font-weight: 700; letter-spacing: -.01em; min-width: 0; }
+  .marca > div {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .marca span { display: block; font-size: .72rem; font-weight: 500; color: var(--suave); }
   .topo-linha form { margin-left: auto; }
   button.sair {
@@ -221,7 +232,13 @@ ${tagsDeIcone()}
 <body>
 <header class="topo">
   <div class="topo-linha">
-    <div class="marca">${esc(tenant.name)}<span>candidato.bio/${esc(tenant.slug)}</span></div>
+    <a href="/painel/inicio" aria-label="Candidato Online">
+      <img class="logo-marca" src="/assets/logo-72.png"
+        srcset="/assets/logo-72.png 1x, /assets/logo-144.png 2x"
+        alt="Candidato Online" width="213" height="72">
+    </a>
+    <div class="divisor"></div>
+    <div class="marca"><div>${esc(tenant.name)}</div><span>candidato.bio/${esc(tenant.slug)}</span></div>
     <form method="post" action="/painel/sair">
       <button class="sair" type="submit">Sair</button>
     </form>
@@ -256,16 +273,16 @@ ${tagsDeIcone()}
 <style>${ESTILO}
   body { display: grid; place-items: center; min-height: 100vh; padding: 1.5rem; }
   .caixa { width: 100%; max-width: 380px; }
-  .caixa img.logo { display: block; width: 84px; margin: 0 auto 1rem; }
-  .caixa h1 { text-align: center; margin-bottom: .3rem; }
+  .caixa img.logo { display: block; width: 100%; max-width: 236px; height: auto; margin: 0 auto 1.4rem; }
   .caixa .sub { text-align: center; color: var(--suave); font-size: .88rem; margin: 0 0 1.5rem; }
   .caixa button { width: 100%; padding: .75rem; }
 </style>
 </head>
 <body>
 <div class="caixa">
-  <img class="logo" src="/assets/icone-192.png" alt="" width="84" height="84">
-  <h1>Candidato Online</h1>
+  <img class="logo" src="/assets/logo-144.png"
+    srcset="/assets/logo-144.png 1x, /assets/logo-candidato-online.png 2x"
+    alt="Candidato Online" width="426" height="144">
   <p class="sub">Acesse o painel da sua campanha</p>
   <div class="cartao">
     ${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
