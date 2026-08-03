@@ -40,8 +40,8 @@ function diaCurto(data) {
 /// Serie unica, entao sem legenda: o titulo do cartao ja diz o que esta
 /// plotado, e uma caixa com um unico quadradinho so repetiria o titulo.
 function areaCadastros(serie) {
-  const L = 44, R = 14, T = 18, B = 30;
-  const W = 720, H = 240;
+  const L = 48, R = 16, T = 22, B = 34;
+  const W = 720, H = 320;
   const largura = W - L - R;
   const altura = H - T - B;
 
@@ -60,8 +60,8 @@ function areaCadastros(serie) {
     .map(
       (v) => `<line x1="${L}" y1="${y(v).toFixed(1)}" x2="${W - R}" y2="${y(v).toFixed(1)}"
         stroke="${v === 0 ? C.eixo : C.grade}" stroke-width="1"/>
-      <text x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end"
-        font-size="11" fill="${C.muda}" style="font-variant-numeric:tabular-nums">${v}</text>`
+      <text x="${L - 10}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end"
+        font-size="12.5" fill="${C.muda}" style="font-variant-numeric:tabular-nums">${v}</text>`
     )
     .join('');
 
@@ -73,10 +73,10 @@ function areaCadastros(serie) {
     .map((i) => {
       const px = x(i), py = y(serie[i].valor);
       const ancora = px > W - R - 40 ? 'end' : px < L + 40 ? 'start' : 'middle';
-      return `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4.5" fill="${C.serie}"
+      return `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="5" fill="${C.serie}"
           stroke="${C.superficie}" stroke-width="2"/>
-        <text x="${px.toFixed(1)}" y="${(py - 12).toFixed(1)}" text-anchor="${ancora}"
-          font-size="11" font-weight="600" fill="${C.tinta}">${serie[i].valor}</text>`;
+        <text x="${px.toFixed(1)}" y="${(py - 14).toFixed(1)}" text-anchor="${ancora}"
+          font-size="13" font-weight="650" fill="${C.tinta}">${serie[i].valor}</text>`;
     })
     .join('');
 
@@ -84,7 +84,7 @@ function areaCadastros(serie) {
   const rotulosX = serie
     .map((p, i) =>
       i % passoRotulo === 0 || i === iFim
-        ? `<text x="${x(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="10.5"
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 11}" text-anchor="middle" font-size="12"
             fill="${C.muda}">${diaCurto(p.data)}</text>`
         : ''
     )
@@ -125,17 +125,17 @@ function areaCadastros(serie) {
 function barras(itens, { ordinal = false } = {}) {
   if (!itens.length) return null;
 
-  const ALTURA = 18, PASSO = 34, VALOR = 46;
+  const ALTURA = 22, PASSO = 46, VALOR = 52;
   const W = 720;
-  const H = itens.length * PASSO + 6;
+  const H = itens.length * PASSO + 10;
 
   // A calha dos rotulos acompanha o texto mais longo, dentro de um limite.
   // Calha fixa faz nome comprido vazar para fora do grafico, e rotulo cortado
   // e pior que rotulo abreviado.
-  const LARGURA_CARACTERE = 6.6;
+  const LARGURA_CARACTERE = 7.4;
   const maiorRotulo = Math.max(...itens.map((i) => String(i.rotulo).length));
-  const ROTULO = Math.min(240, Math.max(90, maiorRotulo * LARGURA_CARACTERE + 16));
-  const cabeCaracteres = Math.floor((ROTULO - 16) / LARGURA_CARACTERE);
+  const ROTULO = Math.min(250, Math.max(100, maiorRotulo * LARGURA_CARACTERE + 18));
+  const cabeCaracteres = Math.floor((ROTULO - 18) / LARGURA_CARACTERE);
 
   const largura = W - ROTULO - VALOR;
   const teto = tetoLimpo(Math.max(...itens.map((i) => i.valor)));
@@ -153,14 +153,14 @@ function barras(itens, { ordinal = false } = {}) {
           : rotuloCompleto;
       return `<g class="barra" data-rotulo="${esc(rotuloCompleto)}" data-valor="${item.valor}">
         <title>${esc(rotuloCompleto)}</title>
-        <text x="${ROTULO - 10}" y="${y + ALTURA / 2 + 4}" text-anchor="end" font-size="12"
+        <text x="${ROTULO - 12}" y="${y + ALTURA / 2 + 5}" text-anchor="end" font-size="13.5"
           fill="${C.secundaria}">${esc(visivel)}</text>
         <rect x="${ROTULO}" y="${y}" width="${comprimento.toFixed(1)}" height="${ALTURA}"
           rx="4" fill="${cor}"/>
         <rect x="${ROTULO}" y="${y}" width="4" height="${ALTURA}" fill="${cor}"/>
-        <text x="${(ROTULO + comprimento + 8).toFixed(1)}" y="${y + ALTURA / 2 + 4}" font-size="12"
+        <text x="${(ROTULO + comprimento + 10).toFixed(1)}" y="${y + ALTURA / 2 + 5}" font-size="13.5"
           font-weight="600" fill="${C.tinta}" style="font-variant-numeric:tabular-nums">${item.valor}</text>
-        <rect class="alvo-barra" x="0" y="${y - 7}" width="${W}" height="${PASSO}" fill="transparent"/>
+        <rect class="alvo-barra" x="0" y="${y - 11}" width="${W}" height="${PASSO}" fill="transparent"/>
       </g>`;
     })
     .join('');

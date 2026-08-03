@@ -285,6 +285,121 @@ router.get('/apoiadores', async (req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
+// Turbinar
+// ---------------------------------------------------------------------------
+
+/// Quem cada canal alcanca. Push exige autorizacao de notificacao no
+/// aparelho; SMS e RCS exigem numero confirmado, porque ambos trafegam pela
+/// operadora — RCS e entregue na mesma caixa do SMS.
+function filtroDoCanal(canal) {
+  if (canal === 'PUSH') return { pushActive: true };
+  return { smsValidated: true };
+}
+
+async function alcancePorCanal(prisma, tenantId, extra = {}) {
+  const base = { tenantId, deletedAt: null, ...extra };
+  const [push, telefone] = await Promise.all([
+    prisma.supporter.count({ where: { ...base, pushActive: true } }),
+    prisma.supporter.count({ where: { ...base, smsValidated: true } }),
+  ]);
+  return { PUSH: push, SMS: telefone, RCS: telefone };
+}
+
+async function montarTurbinar(req, res, aviso) {
+  const prisma = getPrisma();
+  const tenantId = req.tenant.id;
+
+  const [alcance, agrupadoCidades, campanhas] = await Promise.all([
+    alcancePorCanal(prisma, tenantId),
+    prisma.supporter.groupBy({
+      by: ['city'],
+      where: { tenantId, deletedAt: null, city: { not: null } },
+      _count: true,
+    }),
+    prisma.campaign.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 15 }),
+  ]);
+
+  res.type('html').send(
+    vistas.pagina({
+      titulo: 'Turbinar',
+      tenant: req.tenant,
+      aba: 'turbinar',
+      recado: recadoDaUrl(req),
+      corpo: vistas.telaTurbinar({
+        alcance,
+        cidades: agrupadoCidades.map((c) => c.city).filter(Boolean).sort(),
+        campanhas,
+        aviso,
+      }),
+    })
+  );
+}
+
+router.get('/turbinar', async (req, res, next) => {
+  try {
+    await montarTurbinar(req, res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/turbinar', async (req, res, next) => {
+  try {
+    const prisma = getPrisma();
+    const tenantId = req.tenant.id;
+    const b = req.body;
+
+    const channel = ['PUSH', 'SMS', 'RCS'].includes(b.channel) ? b.channel : null;
+    const name = texto(b.name, 150);
+    const message = texto(b.message, 1000);
+    if (!channel || !name || !message) {
+      return voltar(res, '/painel/turbinar', 'Escolha o canal e preencha nome e mensagem.', 'erro');
+    }
+
+    const cidade = texto(b.city, 120);
+    const filtros = { channel, city: cidade };
+
+    // O total e congelado no momento da criacao para o relatorio depois bater
+    // com o publico real — a base cresce todo dia.
+    const totalRecipients = await prisma.supporter.count({
+      where: {
+        tenantId,
+        deletedAt: null,
+        ...filtroDoCanal(channel),
+        ...(cidade ? { city: cidade } : {}),
+      },
+    });
+
+    if (!totalRecipients) {
+      return voltar(res, '/painel/turbinar', 'Nenhum apoiador se encaixa nesses filtros.', 'erro');
+    }
+
+    await prisma.campaign.create({
+      data: {
+        tenantId,
+        name,
+        channel,
+        title: texto(b.title, 150),
+        message,
+        linkUrl: texto(b.linkUrl, 500),
+        filters: filtros,
+        status: 'DRAFT',
+        totalRecipients,
+        createdById: req.sessao.userId,
+      },
+    });
+
+    voltar(
+      res,
+      '/painel/turbinar',
+      `Campanha criada para ${totalRecipients} pessoas. O disparo aguarda a conexão do provedor.`
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Conteudo
 // ---------------------------------------------------------------------------
 

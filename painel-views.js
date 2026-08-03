@@ -11,6 +11,7 @@ const ESTILO = `
     margin: 0; background: var(--fundo); color: var(--texto);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 15px; line-height: 1.5;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
   a { color: var(--primaria); }
   .topo {
@@ -24,17 +25,36 @@ const ESTILO = `
   .marca { font-weight: 700; letter-spacing: -.01em; }
   .marca span { display: block; font-size: .72rem; font-weight: 500; color: var(--suave); }
   .topo-linha form { margin-left: auto; }
-  .abas {
-    max-width: 1040px; margin: 0 auto; padding: 0 1.25rem;
-    display: flex; gap: .25rem; overflow-x: auto; scrollbar-width: none;
+  button.sair {
+    background: #fdecec; color: var(--perigo); font-weight: 650;
   }
-  .abas::-webkit-scrollbar { display: none; }
-  .abas a {
-    padding: .7rem .9rem; border-bottom: 2px solid transparent; white-space: nowrap;
-    color: var(--suave); text-decoration: none; font-size: .9rem; font-weight: 500;
+  button.sair:hover { background: var(--perigo); color: #fff; }
+  main { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1.25rem 1.5rem; }
+
+  /* ---------- menu estilo aplicativo ---------- */
+  .barra-app {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 30;
+    width: 100%; max-width: 620px; display: flex; align-items: flex-end;
+    background: var(--branco); border-top: 1px solid var(--borda);
+    border-radius: 16px 16px 0 0; box-shadow: 0 -6px 24px rgba(11,11,11,.07);
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .abas a.ativa { color: var(--primaria); border-bottom-color: var(--primaria); }
-  main { max-width: 1040px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+  .barra-app a {
+    flex: 1; padding: .55rem .2rem .5rem; display: grid; gap: .18rem; justify-items: center;
+    color: var(--suave); text-decoration: none; font-size: .64rem; font-weight: 600;
+  }
+  .barra-app a.ativa { color: var(--primaria); }
+  .barra-app a.foguete {
+    flex: 0 0 auto; margin: -22px .4rem 0; width: 62px;
+    color: #fff; font-size: .62rem;
+  }
+  .barra-app a.foguete .bolha {
+    width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--primaria); box-shadow: 0 6px 16px color-mix(in srgb, var(--primaria) 45%, transparent);
+    margin: 0 auto .15rem;
+  }
+  .barra-app a.foguete span:last-child { color: var(--primaria); }
+  .barra-app svg { display: block; }
   h1 { font-size: 1.35rem; margin: 0 0 1.25rem; letter-spacing: -.02em; }
   h2 { font-size: 1rem; margin: 0 0 .9rem; letter-spacing: -.01em; }
 
@@ -89,6 +109,26 @@ const ESTILO = `
   .recado { padding: .75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: .9rem; }
   .recado.ok { background: #e7f6ec; color: var(--ok); }
   .recado.erro { background: #fdecec; color: var(--perigo); }
+  .recado.alerta { background: #fdf6e7; color: #855107; }
+
+  /* ---------- turbinar ---------- */
+  .canais { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .7rem; }
+  .canal { position: relative; display: block; cursor: pointer; }
+  .canal input { position: absolute; opacity: 0; pointer-events: none; }
+  .canal-corpo {
+    display: block; padding: .95rem 1rem; border: 1.5px solid var(--borda);
+    border-radius: 12px; height: 100%;
+  }
+  .canal input:checked + .canal-corpo {
+    border-color: var(--primaria);
+    box-shadow: inset 0 0 0 1px var(--primaria);
+    background: color-mix(in srgb, var(--primaria) 5%, #fff);
+  }
+  .canal input:focus-visible + .canal-corpo { outline: 2px solid var(--primaria); outline-offset: 2px; }
+  .canal-topo { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+  .canal-alcance { font-size: 1.45rem; font-weight: 650; letter-spacing: -.03em; }
+  .canal small { display: block; color: var(--suave); font-size: .78rem; margin-top: .25rem; }
+  .canal .canal-custo { font-weight: 600; }
   .vazio { color: var(--suave); font-size: .9rem; padding: .5rem 0; }
 
   .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem; align-items: end; }
@@ -147,13 +187,31 @@ const ESTILO = `
   .tabela-gemea td { font-variant-numeric: tabular-nums; }
 `;
 
+const ICONES_MENU = {
+  inicio: '<path d="M12 3 3 10v10h6v-6h6v6h6V10L12 3Z"/>',
+  apoiadores:
+    '<path d="M16 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm-8 0a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0 2c-2.7 0-6 1.3-6 4v2h9v-2c0-1 .4-1.9 1-2.6-1.2-.9-2.9-1.4-4-1.4Zm8 0c-1.3 0-4 .6-5.2 1.8.7.7 1.2 1.6 1.2 2.6V19h10v-2c0-2.7-3.3-4-6-4Z"/>',
+  conteudo: '<path d="M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.6H8V12Zm0 4h8v1.6H8V16Z"/>',
+  site: '<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm7.9 9h-3.3a15 15 0 0 0-1.3-5.6A8 8 0 0 1 19.9 11ZM12 4.1c.8 1.1 1.8 3.4 2 6.9h-4c.2-3.5 1.2-5.8 2-6.9ZM4.1 11a8 8 0 0 1 4.6-5.6A15 15 0 0 0 7.4 11H4.1Zm0 2h3.3a15 15 0 0 0 1.3 5.6A8 8 0 0 1 4.1 13ZM12 19.9c-.8-1.1-1.8-3.4-2-6.9h4c-.2 3.5-1.2 5.8-2 6.9Zm3.3-1.3a15 15 0 0 0 1.3-5.6h3.3a8 8 0 0 1-4.6 5.6Z"/>',
+  foguete:
+    '<path d="M13.6 2.2c3.4.5 6.2 3.3 6.7 6.7.4 2.8-.7 5.6-2.9 7.6l-1.9 1.7-4-4-4-4L9.2 8c2-2.2 4.8-3.3 7.6-2.9l-3.2-2.9ZM14.9 9.7a1.7 1.7 0 1 0-2.4-2.4 1.7 1.7 0 0 0 2.4 2.4ZM7.4 14.3l2.3 2.3c-.6 1.9-2 3.3-4.2 4.2-.5.2-1-.3-.8-.8.9-2.2 2.3-3.6 4.2-4.2l-1.5-1.5Z"/>',
+};
+
+function iconeMenu(nome, tamanho = 21) {
+  return `<svg viewBox="0 0 24 24" width="${tamanho}" height="${tamanho}" fill="currentColor" aria-hidden="true">${ICONES_MENU[nome]}</svg>`;
+}
+
 function pagina({ titulo, tenant, aba, corpo, recado }) {
   const principal = cor(tenant?.primaryColor, '#1e40af');
+  const item = (chave, rotulo, destino, extra = '') =>
+    `<a href="${destino}" class="${aba === chave ? 'ativa' : ''}" ${extra}>
+      ${iconeMenu(chave)}<span>${rotulo}</span></a>`;
+
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(titulo)} · Candidato Online</title>
 <style>${ESTILO}
   :root { --primaria: ${principal}; }
@@ -164,20 +222,24 @@ function pagina({ titulo, tenant, aba, corpo, recado }) {
   <div class="topo-linha">
     <div class="marca">${esc(tenant.name)}<span>candidato.bio/${esc(tenant.slug)}</span></div>
     <form method="post" action="/painel/sair">
-      <button class="discreto" type="submit">Sair</button>
+      <button class="sair" type="submit">Sair</button>
     </form>
   </div>
-  <nav class="abas">
-    <a href="/painel/inicio" class="${aba === 'inicio' ? 'ativa' : ''}">Início</a>
-    <a href="/painel/apoiadores" class="${aba === 'apoiadores' ? 'ativa' : ''}">Apoiadores</a>
-    <a href="/painel/conteudo" class="${aba === 'conteudo' ? 'ativa' : ''}">Conteúdo</a>
-    <a href="/${esc(tenant.slug)}" target="_blank" rel="noopener">Ver meu site ↗</a>
-  </nav>
 </header>
 <main>
   ${recado ? `<p class="recado ${recado.tipo}">${esc(recado.texto)}</p>` : ''}
   ${corpo}
 </main>
+
+<nav class="barra-app">
+  ${item('inicio', 'Início', '/painel/inicio')}
+  ${item('apoiadores', 'Apoiadores', '/painel/apoiadores')}
+  <a href="/painel/turbinar" class="foguete ${aba === 'turbinar' ? 'ativa' : ''}">
+    <span class="bolha">${iconeMenu('foguete', 27)}</span><span>Turbinar</span>
+  </a>
+  ${item('conteudo', 'Conteúdo', '/painel/conteudo')}
+  ${item('site', 'Meu site', `/${esc(tenant.slug)}`, 'target="_blank" rel="noopener"')}
+</nav>
 </body>
 </html>`;
 }
@@ -285,16 +347,20 @@ function telaInicio({ numeros, serie, funil, origens, cidades, ultimos }) {
   return `<h1>Início</h1>
 
 <div class="heroi">
-  <div class="rotulo">Total de apoiadores</div>
-  <div class="figura">${numeros.total.toLocaleString('pt-BR')}</div>
-  <div class="apoio">${numeros.completos.toLocaleString('pt-BR')} com cadastro completo · ${numeros.confirmados.toLocaleString('pt-BR')} com número confirmado</div>
+  <div class="rotulo">Pessoas que podem receber push agora</div>
+  <div class="figura">${numeros.push.toLocaleString('pt-BR')}</div>
+  <div class="apoio">
+    de ${numeros.total.toLocaleString('pt-BR')} apoiadores ·
+    ${numeros.total ? Math.round((numeros.push / numeros.total) * 100) : 0}% autorizaram notificações
+  </div>
+  <a class="botao" href="/painel/turbinar" style="margin-top:.9rem">Turbinar campanha</a>
 </div>
 
 <div class="kpis">
+  ${kpi('Total de apoiadores', numeros.total)}
   ${kpi('Hoje', numeros.hoje)}
   ${kpi('Últimos 7 dias', numeros.semana, { pct: numeros.deltaSemana, periodo: 'vs. 7 anteriores' })}
   ${kpi('Últimos 30 dias', numeros.mes, { pct: numeros.deltaMes, periodo: 'vs. 30 anteriores' })}
-  ${kpi('Push ativos', numeros.push)}
 </div>
 
 ${caixaGrafico(
@@ -309,8 +375,7 @@ ${caixaGrafico(
     : ''
 )}
 
-<div class="duplo">
-  ${caixaGrafico(
+${caixaGrafico(
     'Funil de cadastro',
     'Cada etapa mostra em que ponto o apoiador parou',
     barrasFunil || graficos.semDados(720, 120, 'Nenhum cadastro ainda.'),
@@ -322,7 +387,6 @@ ${caixaGrafico(
     barrasOrigem || graficos.semDados(720, 120, 'Sem origem registrada ainda.'),
     barrasOrigem ? graficos.tabela(['Origem', 'Pessoas'], origens.map((o) => [o.rotulo, String(o.valor)])) : ''
   )}
-</div>
 
 ${caixaGrafico(
   'Cidades com mais apoiadores',
@@ -464,6 +528,106 @@ function telaApoiadores({ apoiadores, filtros, cidades, origens, total, pagina: 
         </div>`
       : ''
   }
+</div>`;
+}
+
+const CANAIS = [
+  {
+    chave: 'PUSH',
+    nome: 'Push',
+    descricao: 'Notificação no celular de quem instalou o WebApp e autorizou.',
+    custo: 'Sem custo por envio',
+  },
+  {
+    chave: 'SMS',
+    nome: 'SMS',
+    descricao: 'Mensagem de texto para quem confirmou o número no cadastro.',
+    custo: 'Cobrado por mensagem',
+  },
+  {
+    chave: 'RCS',
+    nome: 'RCS',
+    descricao: 'Mensagem rica com imagem e botões, na mesma caixa do SMS.',
+    custo: 'Cobrado por mensagem',
+  },
+];
+
+function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
+  const cartaoCanal = (c) => `<label class="canal">
+    <input type="radio" name="channel" value="${c.chave}" ${c.chave === 'PUSH' ? 'checked' : ''}>
+    <span class="canal-corpo">
+      <span class="canal-topo">
+        <strong>${esc(c.nome)}</strong>
+        <span class="canal-alcance">${alcance[c.chave].toLocaleString('pt-BR')}</span>
+      </span>
+      <small>${esc(c.descricao)}</small>
+      <small class="canal-custo">${esc(c.custo)}</small>
+    </span>
+  </label>`;
+
+  const historico = campanhas.length
+    ? `<div class="tabela-rolavel"><table>
+        <thead><tr><th>Campanha</th><th>Canal</th><th>Destinatários</th><th>Status</th><th>Criada</th></tr></thead>
+        <tbody>${campanhas
+          .map(
+            (c) => `<tr>
+              <td>${esc(c.name)}</td>
+              <td>${esc(c.channel)}</td>
+              <td>${c.totalRecipients.toLocaleString('pt-BR')}</td>
+              <td><span class="etiqueta">${esc(c.status)}</span></td>
+              <td>${esc(formatarData(c.createdAt))}</td>
+            </tr>`
+          )
+          .join('')}</tbody>
+      </table></div>`
+    : '<p class="vazio">Nenhuma campanha criada ainda.</p>';
+
+  return `<h1>Turbinar</h1>
+
+<p class="recado alerta">
+  <strong>Nenhum provedor de envio está conectado ainda.</strong>
+  As campanhas são montadas, o público é calculado e tudo fica salvo — mas o
+  disparo só acontece depois que o gateway de Push, SMS e RCS for integrado.
+</p>
+
+<div class="cartao">
+  <h2>Para quem você consegue falar hoje</h2>
+  <p class="legenda-eixo">O público sai dos cadastros do seu WebApp. Push depende de a pessoa ter autorizado notificações; SMS e RCS dependem de ela ter confirmado o número.</p>
+
+  <form method="post" action="/painel/turbinar">
+    <div class="canais">${CANAIS.map(cartaoCanal).join('')}</div>
+
+    <div class="linha" style="margin-top:1.25rem">
+      <label class="campo"><span>Nome da campanha (só você vê)</span>
+        <input type="text" name="name" required maxlength="150" placeholder="Ex: Convite para o comício de sábado">
+      </label>
+      <label class="campo"><span>Cidade (opcional)</span>
+        <select name="city"><option value="">Todas as cidades</option>${cidades
+          .map((c) => `<option value="${esc(c)}">${esc(c)}</option>`)
+          .join('')}</select>
+      </label>
+    </div>
+
+    <label class="campo"><span>Título (aparece em negrito no push)</span>
+      <input type="text" name="title" maxlength="150" placeholder="Ex: Vem com a gente!">
+    </label>
+
+    <label class="campo"><span>Mensagem</span>
+      <textarea name="message" required maxlength="1000"
+        placeholder="Escreva a mensagem que será enviada."></textarea>
+    </label>
+
+    <label class="campo"><span>Link ao tocar na mensagem (opcional)</span>
+      <input type="url" name="linkUrl" placeholder="https://...">
+    </label>
+
+    <button type="submit">Criar campanha</button>
+  </form>
+</div>
+
+<div class="cartao">
+  <h2>Campanhas criadas</h2>
+  ${historico}
 </div>`;
 }
 
@@ -622,4 +786,4 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 </div>`;
 }
 
-module.exports = { pagina, telaEntrar, telaInicio, telaApoiadores, telaConteudo };
+module.exports = { pagina, telaEntrar, telaInicio, telaApoiadores, telaConteudo, telaTurbinar };
