@@ -41,7 +41,7 @@ const PASSOS = [
 const CANAIS = [
   {
     nome: 'Push',
-    etiqueta: 'Chega direto na tela',
+    etiqueta: 'R$ 0,05 por envio',
     destaque: true,
     icone:
       '<path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/>',
@@ -112,28 +112,28 @@ const RECURSOS = [
 const PLANOS = [
   {
     nome: 'Vereador',
-    preco: '297',
-    periodo: '/mês',
+    preco: 'Sob consulta',
+    periodo: '',
     resumo: 'Para campanhas municipais que estão começando a base.',
     itens: [
       'Site próprio no ar em 6 horas',
       'Apoiadores ilimitados',
       'Push, SMS, RCS e WhatsApp no mesmo painel',
       'CRM com filtros e exportação',
-      '1.000 envios inclusos por mês, em qualquer canal',
+      'Push a R$ 0,05 por envio',
       'Suporte por WhatsApp',
     ],
   },
   {
     nome: 'Prefeito',
-    preco: '697',
-    periodo: '/mês',
+    preco: 'Sob consulta',
+    periodo: '',
     destaque: true,
     selo: 'Mais escolhido',
     resumo: 'Para quem precisa falar com a cidade inteira, com segmentação.',
     itens: [
       'Tudo do plano Vereador',
-      '5.000 envios inclusos por mês, em qualquer canal',
+      'Pacote de envios sob medida',
       'WhatsApp pela API oficial',
       'RCS com imagem e botões',
       'Segmentação por bairro e por tag',
@@ -796,7 +796,7 @@ ${tagsDeIcone()}
       <div class="cabecalho centro">
         <p class="etiqueta">Planos</p>
         <h2>Escolha pelo tamanho da sua disputa</h2>
-        <p>Todos os planos incluem os quatro canais e um pacote mensal de envios. Acima do pacote, você paga só o que usar.</p>
+        <p>Todos os planos incluem os quatro canais. O push sai por R$ 0,05 o envio, e o pacote é montado pelo tamanho da sua disputa — fale com a gente e a proposta sai no mesmo dia.</p>
       </div>
       <div class="planos">${planos}</div>
     </div>

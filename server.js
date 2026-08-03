@@ -7,6 +7,7 @@ const landing = require('./landing');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
 const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
+const descadastro = require('./descadastro');
 
 const app = express();
 
@@ -99,6 +100,35 @@ async function tratar(res, acao) {
     res.status(500).json({ erro: 'Erro inesperado. Tente novamente.' });
   }
 }
+
+// Saida da lista. O link assinado vai no rodape de cada disparo, entao
+// precisa funcionar num toque, sem login e sem a pessoa digitar nada.
+app.get('/:slug/sair', comTenant, (req, res) => {
+  const id = descadastro.lerToken(req.query.t);
+  res.type('html').send(
+    descadastro.pagina(req.tenant, {
+      estado: id ? 'confirmar' : 'invalido',
+      telefone: id ? req.query.t : '',
+    })
+  );
+});
+
+app.post('/:slug/sair', comTenant, express.urlencoded({ extended: false }), async (req, res, next) => {
+  try {
+    const id = descadastro.lerToken(req.body?.t || req.query.t);
+    if (!id) {
+      return res.status(400).type('html').send(
+        descadastro.pagina(req.tenant, { estado: 'invalido' })
+      );
+    }
+    const removido = await descadastro.descadastrar(req.tenant.id, id, req.ip);
+    res.type('html').send(
+      descadastro.pagina(req.tenant, { estado: removido ? 'pronto' : 'invalido' })
+    );
+  } catch (err) {
+    next(err);
+  }
+});
 
 app.get('/:slug/manifest.json', comTenant, (req, res) => {
   res.type('application/manifest+json').send(JSON.stringify(manifesto(req.tenant)));

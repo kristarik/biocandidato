@@ -153,6 +153,15 @@ const ESTILO = `
   .canal .canal-custo { font-weight: 600; }
   .vazio { color: var(--suave); font-size: .9rem; padding: .5rem 0; }
 
+  .titulo-com-acao {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem;
+  }
+  .titulo-com-acao h2 { margin: 0; }
+  .titulo-com-acao .botao {
+    display: inline-flex; align-items: center; gap: .45rem;
+    text-decoration: none; font-size: .85rem; padding: .5rem .85rem;
+  }
   .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .6rem; align-items: end; }
   .filtros label.campo { margin-bottom: 0; }
 
@@ -521,6 +530,12 @@ function telaApoiadores({ apoiadores, filtros, cidades, origens, total, pagina: 
     return p2.toString();
   };
 
+  // Filtros ativos vao junto no link de exportar: o CSV precisa trazer o mesmo
+  // recorte que esta na tela, nao a base inteira.
+  const paramsFiltro = new URLSearchParams(
+    Object.entries(filtros).filter(([, v]) => v)
+  ).toString();
+
   return `<h1>Apoiadores</h1>
 <div class="cartao">
   <form method="get" class="filtros">
@@ -550,7 +565,21 @@ function telaApoiadores({ apoiadores, filtros, cidades, origens, total, pagina: 
   </form>
 </div>
 <div class="cartao">
-  <h2>${total} ${total === 1 ? 'apoiador' : 'apoiadores'}</h2>
+  <div class="titulo-com-acao">
+    <h2>${total} ${total === 1 ? 'apoiador' : 'apoiadores'}</h2>
+    ${
+      total
+        ? `<a class="botao discreto" href="/painel/apoiadores/exportar${
+            paramsFiltro ? `?${paramsFiltro}` : ''
+          }" download>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M12 16 6 10l1.4-1.4 3.6 3.6V3h2v9.2l3.6-3.6L18 10l-6 6Zm-7 5v-2h14v2H5Z"/>
+            </svg>
+            Exportar ${total === 1 ? 'este' : 'estes ' + total} em CSV
+          </a>`
+        : ''
+    }
+  </div>
   <div class="tabela-rolavel">
     <table>
       <thead><tr><th>Nome</th><th>WhatsApp</th><th>CEP</th><th>Cidade</th><th>Origem</th><th>Status</th><th>Cadastro</th></tr></thead>

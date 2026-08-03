@@ -176,6 +176,11 @@ model Supporter {
   registrationIp String? @map("registration_ip") @db.VarChar(45)
   userAgent      String? @map("user_agent") @db.VarChar(500)
 
+  /// Pedido de descadastro. Nao apaga a pessoa: apagar faria o mesmo numero
+  /// poder ser recadastrado e voltar a receber. O registro e a prova de que
+  /// ela pediu para sair, e a data em que pediu.
+  optedOutAt DateTime? @map("opted_out_at")
+
   notes        String?   @db.Text
   lastAccessAt DateTime? @map("last_access_at")
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -193,6 +198,7 @@ model Supporter {
   utmLogs       UtmLog[]
 
   @@unique([tenantId, phone])
+  @@index([tenantId, optedOutAt])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([tenantId, city])

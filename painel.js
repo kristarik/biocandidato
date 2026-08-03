@@ -266,31 +266,42 @@ async function idsDaBusca(prisma, tenantId, termo) {
   return linhas.map((l) => l.id);
 }
 
+/// Le os filtros da URL e monta a consulta. Compartilhado pela listagem e pela
+/// exportacao: se cada uma montasse o proprio filtro, o CSV acabaria trazendo
+/// um recorte diferente do que a pessoa esta vendo na tela.
+async function filtrosDeApoiadores(req) {
+  const prisma = getPrisma();
+  const tenantId = req.tenant.id;
+
+  const filtros = {
+    busca: texto(req.query.busca, 80) || '',
+    cidade: texto(req.query.cidade, 120) || '',
+    status: ['PENDENTE', 'CONFIRMADO', 'COMPLETO'].includes(req.query.status) ? req.query.status : '',
+    origem: texto(req.query.origem, 60) || '',
+  };
+
+  const where = { tenantId, deletedAt: null };
+  if (filtros.cidade) where.city = filtros.cidade;
+  if (filtros.status) where.status = filtros.status;
+  if (filtros.origem) where.origin = filtros.origem;
+
+  // A busca textual precisa de SQL puro: o `contains` do Prisma envia o
+  // parametro com colacao binaria e o MariaDB recusa comparar com a coluna
+  // utf8mb4_unicode_ci ("Illegal mix of collations"). O LIKE cru respeita a
+  // colacao da coluna, o que tambem mantem a busca sem diferenciar
+  // maiusculas de minusculas.
+  if (filtros.busca) {
+    where.id = { in: await idsDaBusca(prisma, tenantId, filtros.busca) };
+  }
+
+  return { filtros, where };
+}
+
 router.get('/apoiadores', async (req, res, next) => {
   try {
     const prisma = getPrisma();
     const tenantId = req.tenant.id;
-
-    const filtros = {
-      busca: texto(req.query.busca, 80) || '',
-      cidade: texto(req.query.cidade, 120) || '',
-      status: ['PENDENTE', 'CONFIRMADO', 'COMPLETO'].includes(req.query.status) ? req.query.status : '',
-      origem: texto(req.query.origem, 60) || '',
-    };
-
-    const where = { tenantId, deletedAt: null };
-    if (filtros.cidade) where.city = filtros.cidade;
-    if (filtros.status) where.status = filtros.status;
-    if (filtros.origem) where.origin = filtros.origem;
-
-    // A busca textual precisa de SQL puro: o `contains` do Prisma envia o
-    // parametro com colacao binaria e o MariaDB recusa comparar com a coluna
-    // utf8mb4_unicode_ci ("Illegal mix of collations"). O LIKE cru respeita a
-    // colacao da coluna, o que tambem mantem a busca sem diferenciar
-    // maiusculas de minusculas.
-    if (filtros.busca) {
-      where.id = { in: await idsDaBusca(prisma, tenantId, filtros.busca) };
-    }
+    const { filtros, where } = await filtrosDeApoiadores(req);
 
     const paginaAtual = Math.max(1, Number(req.query.pagina) || 1);
 
@@ -336,6 +347,72 @@ router.get('/apoiadores', async (req, res, next) => {
   }
 });
 
+const COLUNAS_CSV = [
+  ['Nome', (s) => s.name],
+  ['WhatsApp', (s) => s.phone],
+  ['Status', (s) => s.status],
+  ['CEP', (s) => s.cep],
+  ['Cidade', (s) => s.city],
+  ['Estado', (s) => s.state],
+  ['Origem', (s) => s.origin],
+  ['SMS confirmado', (s) => (s.smsValidated ? 'sim' : 'nao')],
+  ['Push ativo', (s) => (s.pushActive ? 'sim' : 'nao')],
+  ['utm_source', (s) => s.utmSource],
+  ['utm_medium', (s) => s.utmMedium],
+  ['utm_campaign', (s) => s.utmCampaign],
+  ['Cadastro', (s) => s.createdAt.toISOString()],
+];
+
+/// Escapa um valor para CSV. O prefixo em campos que comecam com sinal impede
+/// que o Excel interprete o conteudo como formula ao abrir o arquivo — um nome
+/// como "=CMD" viraria execucao na maquina de quem abrir.
+function celulaCsv(valor) {
+  const texto = valor === null || valor === undefined ? '' : String(valor);
+  const seguro = /^[=+\-@\t\r]/.test(texto) ? `'${texto}` : texto;
+  return `"${seguro.replaceAll('"', '""')}"`;
+}
+
+router.get('/apoiadores/exportar', async (req, res, next) => {
+  try {
+    const prisma = getPrisma();
+    const { where } = await filtrosDeApoiadores(req);
+
+    const apoiadores = await prisma.supporter.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 50_000,
+    });
+
+    const linhas = [
+      COLUNAS_CSV.map(([titulo]) => celulaCsv(titulo)).join(';'),
+      ...apoiadores.map((s) => COLUNAS_CSV.map(([, ler]) => celulaCsv(ler(s))).join(';')),
+    ];
+
+    const carimbo = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="apoiadores-${req.tenant.slug}-${carimbo}.csv"`
+    );
+    // BOM na frente: sem ele o Excel abre o arquivo em latin-1 e todo acento
+    // vira caractere quebrado.
+    res.send(`﻿${linhas.join('\r\n')}\r\n`);
+
+    await prisma.auditLog.create({
+      data: {
+        tenantId: req.tenant.id,
+        userId: req.sessao.userId,
+        action: 'EXPORT',
+        entity: 'Supporter',
+        after: { total: apoiadores.length, filtros: req.query },
+        ip: req.ip,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Turbinar
 // ---------------------------------------------------------------------------
@@ -350,7 +427,9 @@ function filtroDoCanal(canal) {
 }
 
 async function alcancePorCanal(prisma, tenantId, extra = {}) {
-  const base = { tenantId, deletedAt: null, ...extra };
+  // Quem pediu para sair fica fora de qualquer canal. Sem este filtro o botao
+  // de descadastro seria decorativo, e a pessoa continuaria recebendo.
+  const base = { tenantId, deletedAt: null, optedOutAt: null, ...extra };
   const [push, telefone] = await Promise.all([
     prisma.supporter.count({ where: { ...base, pushActive: true } }),
     prisma.supporter.count({ where: { ...base, smsValidated: true } }),
@@ -418,6 +497,7 @@ router.post('/turbinar', async (req, res, next) => {
       where: {
         tenantId,
         deletedAt: null,
+        optedOutAt: null,
         ...filtroDoCanal(channel),
         ...(cidade ? { city: cidade } : {}),
       },
