@@ -116,7 +116,7 @@ const PLANOS = [
     periodo: '/mês',
     resumo: 'Para campanhas municipais que estão começando a base.',
     itens: [
-      'Site próprio no ar em 48h',
+      'Site próprio no ar em 6 horas',
       'Apoiadores ilimitados',
       'Push ilimitado e sem custo por envio',
       'CRM com filtros e exportação',
@@ -179,7 +179,7 @@ const PERGUNTAS = [
   },
   {
     p: 'Quanto tempo leva para entrar no ar?',
-    r: 'Até 48 horas depois que você mandar o material. Em período de campanha, com prazo apertado, a gente prioriza.',
+    r: 'Até 6 horas depois que você mandar o material. Em período de campanha, com prazo apertado, a gente prioriza.',
   },
   {
     p: 'Consigo cancelar quando quiser?',
@@ -682,7 +682,7 @@ ${tagsDeIcone()}
           <a class="botao botao-primario botao-grande" href="${esc(contato)}">Quero minha página</a>
           <a class="botao botao-linha botao-grande" href="/dra-maria" target="_blank" rel="noopener">Ver demonstração</a>
         </div>
-        <p class="capa-nota entrada">No ar em até 48h · Sem fidelidade · Você não configura nada</p>
+        <p class="capa-nota entrada">No ar em até 6 horas · Sem fidelidade · Você não configura nada</p>
       </div>
 
       <div class="palco entrada">
@@ -722,9 +722,9 @@ ${tagsDeIcone()}
 
   <section class="largura" style="padding-bottom: clamp(3rem, 6vw, 4.5rem)">
     <dl class="placa revelar">
-      <div><dt>48h</dt><dd>do material enviado ao site no ar</dd></div>
-      <div><dt>R$ 0</dt><dd>por notificação push enviada</dd></div>
-      <div><dt>4</dt><dd>canais: push, WhatsApp, SMS e RCS</dd></div>
+      <div><dt>6h</dt><dd>do material enviado ao site no ar</dd></div>
+      <div><dt>Único</dt><dd>CRM eleitoral com notificação push</dd></div>
+      <div><dt>4</dt><dd>canais: push, SMS, RCS e WhatsApp</dd></div>
       <div><dt>100%</dt><dd>da base é sua, exportável quando quiser</dd></div>
     </dl>
   </section>
@@ -815,7 +815,7 @@ ${tagsDeIcone()}
   <section class="largura" style="padding-bottom: clamp(4rem, 8vw, 6rem)">
     <div class="final revelar">
       <h2>Sua próxima eleição começa com quem já te apoia.</h2>
-      <p>Manda seu material hoje e em 48 horas seu site está no ar captando apoiador. Sem fidelidade, sem taxa de setup.</p>
+      <p>Manda seu material hoje e em 6 horas seu site está no ar captando apoiador. Sem fidelidade, sem taxa de setup.</p>
       <div class="final-acoes">
         <a class="botao botao-primario botao-grande" href="${esc(contato)}">Quero minha página</a>
         <a class="botao botao-vidro botao-grande" href="/dra-maria" target="_blank" rel="noopener">Ver demonstração</a>
