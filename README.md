@@ -28,6 +28,25 @@ as credenciais. A senha e aleatoria por candidato — senha padrao previsivel em
 sistema multi-tenant significa que quem descobre o padrao entra em todas as
 contas. Ela so aparece uma vez: depois vira hash e nao pode ser lida.
 
+## Painel do candidato
+
+`/painel/entrar` — login com o e-mail e a senha gerados no provisionamento.
+
+```bash
+npm run candidato:senha -- dra-maria   # gera uma nova senha
+```
+
+Tres telas: **Inicio** (numeros da campanha e ultimos cadastros), **Apoiadores**
+(CRM com busca, filtro por cidade, status e origem, paginado) e **Conteudo**
+(identidade visual, propostas, redes, links e banners).
+
+### Isolamento entre candidatos
+
+O `tenantId` vem sempre do token da sessao, nunca da URL ou do formulario. As
+remocoes usam `deleteMany` filtrado por `tenantId`: com `delete` simples, um id
+forjado apagaria conteudo de outro candidato, ja que o MariaDB nao tem Row
+Level Security. **Qualquer rota nova do painel precisa seguir essa regra.**
+
 ## Cadastro do apoiador
 
 Tres etapas, para pedir o minimo na entrada:

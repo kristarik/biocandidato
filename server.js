@@ -1,6 +1,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const painel = require('./painel');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada } = require('./webapp');
 const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
@@ -9,6 +11,11 @@ const app = express();
 
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '16kb' }));
+app.use(cookieParser());
+
+// Antes da rota /:slug, senao "painel" seria interpretado como slug de
+// candidato. O slug "painel" tambem esta na lista de reservados.
+app.use('/painel', painel);
 
 // A Hostinger injeta PORT. Escutar em 0.0.0.0 e obrigatorio para o proxy
 // dela alcancar o processo - 127.0.0.1 nao funciona.
