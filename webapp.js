@@ -210,12 +210,8 @@ function render(t) {
     --fundo: #fff;
     --nav: 66px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --escuro: #0a0a0c; --superficie: #1a1a1d; --texto: #f2f2f7;
-      --suave: #9a9aa0; --borda: #2a2a2e; --fundo: #000;
-    }
-  }
+  /* O WebApp e sempre claro, mesmo com o sistema em modo escuro: a identidade
+     visual do candidato precisa ser a mesma para todo eleitor. */
   * { box-sizing: border-box; }
   body {
     margin: 0; background: var(--fundo); color: var(--texto);
@@ -226,10 +222,15 @@ function render(t) {
 
   /* ---------- topo ---------- */
   .topo { position: relative; text-align: center; }
+  /* Com banner cadastrado, a imagem manda. Sem banner, a faixa usa a cor do
+     candidato em vez de preto: identidade visual em vez de tarja vazia. */
   .topo .capa {
-    height: 190px; background: var(--escuro);
-    background-image: ${t.bannerUrl ? `url("${esc(t.bannerUrl)}")` : 'none'};
-    background-size: cover; background-position: center;
+    height: 190px;
+    background: ${
+      t.bannerUrl
+        ? `url("${esc(t.bannerUrl)}") center / cover no-repeat, var(--primaria)`
+        : `linear-gradient(160deg, var(--primaria), color-mix(in srgb, var(--primaria) 62%, #000))`
+    };
   }
   .topo .retrato {
     width: 148px; height: 148px; border-radius: 50%; object-fit: cover;
@@ -273,9 +274,13 @@ function render(t) {
   .carrossel {
     display: flex; gap: .9rem; margin-top: 1rem; padding: .25rem 1.25rem 1rem;
     overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    scrollbar-width: none; cursor: grab;
   }
   .carrossel::-webkit-scrollbar { display: none; }
+  /* Durante o arrasto o encaixe e desligado: com scroll-snap ativo o navegador
+     puxa o conteudo de volta e o movimento fica travando. */
+  .arrastando { cursor: grabbing; scroll-snap-type: none; user-select: none; }
+  .arrastando a, .arrastando img { -webkit-user-drag: none; }
   .proposta {
     flex: 0 0 78%; max-width: 300px; scroll-snap-align: center;
     background: var(--escuro); color: #fff; border-radius: 14px;
@@ -330,12 +335,15 @@ function render(t) {
     max-width: 34rem; margin: .7rem auto 0; padding: .7rem .9rem; border-radius: 8px;
     background: #fdecec; color: #a3272a; font-size: .84rem; text-align: center;
   }
-  @media (prefers-color-scheme: dark) { .aviso { background: #2a1416; color: #ff9b9b; } }
 
   /* ---------- redes ---------- */
+  /* "safe center" centraliza quando cabe e alinha ao inicio quando transborda.
+     Com "center" puro o navegador corta os primeiros icones e eles ficam
+     inalcancaveis pela rolagem. */
   .redes-lista {
-    display: flex; gap: 1rem; justify-content: center; flex-wrap: nowrap;
+    display: flex; gap: 1rem; justify-content: safe center; flex-wrap: nowrap;
     margin-top: 1.1rem; padding: 0 1.25rem 0; overflow-x: auto; scrollbar-width: none;
+    cursor: grab;
   }
   .redes-lista::-webkit-scrollbar { display: none; }
   .redes-lista a {
@@ -436,6 +444,57 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 (function () {
   var SLUG = ${JSON.stringify(t.slug)};
   var PROPOSTAS = ${JSON.stringify(conteudoPropostas)};
+
+  // ----- arrastar com o mouse -----
+  // No toque a rolagem nativa ja funciona e e melhor que qualquer emulacao,
+  // entao o arrasto so entra para ponteiro de mouse.
+  function habilitarArrasto(faixa) {
+    var arrastando = false, xInicial = 0, scrollInicial = 0, moveu = false;
+
+    faixa.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      arrastando = true;
+      moveu = false;
+      xInicial = e.clientX;
+      scrollInicial = faixa.scrollLeft;
+      faixa.classList.add('arrastando');
+    });
+
+    faixa.addEventListener('pointermove', function (e) {
+      if (!arrastando) return;
+      var dx = e.clientX - xInicial;
+      if (Math.abs(dx) > 4) {
+        moveu = true;
+        // So captura o ponteiro depois de virar arrasto de fato: capturar no
+        // pointerdown impediria o clique simples no botao do card.
+        if (faixa.hasPointerCapture && !faixa.hasPointerCapture(e.pointerId)) {
+          faixa.setPointerCapture(e.pointerId);
+        }
+      }
+      faixa.scrollLeft = scrollInicial - dx;
+    });
+
+    function soltar() {
+      if (!arrastando) return;
+      arrastando = false;
+      faixa.classList.remove('arrastando');
+    }
+    faixa.addEventListener('pointerup', soltar);
+    faixa.addEventListener('pointercancel', soltar);
+    faixa.addEventListener('pointerleave', soltar);
+
+    // Um arrasto que termina sobre um botao nao pode virar clique.
+    faixa.addEventListener('click', function (e) {
+      if (!moveu) return;
+      e.preventDefault();
+      e.stopPropagation();
+      moveu = false;
+    }, true);
+
+    faixa.addEventListener('dragstart', function (e) { e.preventDefault(); });
+  }
+
+  document.querySelectorAll('.carrossel, .redes-lista').forEach(habilitarArrasto);
 
   // ----- lightbox das propostas -----
   var dialogo = document.getElementById('lightbox');
@@ -568,7 +627,6 @@ function paginaNaoEncontrada() {
     text-align:center; padding:2rem; }
   h1 { font-size:1.3rem; margin:0 0 .5rem; }
   p { color:#6b6b70; margin:0; }
-  @media (prefers-color-scheme: dark) { body { background:#000; color:#f2f2f7; } p { color:#9a9aa0; } }
 </style></head>
 <body><div><h1>Candidato não encontrado</h1><p>Confira o endereço e tente novamente.</p></div></body></html>`;
 }
