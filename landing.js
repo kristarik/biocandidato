@@ -34,7 +34,47 @@ const PASSOS = [
     numero: '03',
     titulo: 'Você fala com todos quando quiser',
     texto:
-      'Um comício marcado, uma resposta a ataque, um pedido de voto na véspera. Você escreve uma vez e alcança sua base inteira por push, SMS ou RCS. Sem intermediário, sem leilão de anúncio.',
+      'Um comício marcado, uma resposta a ataque, um pedido de voto na véspera. Você escreve uma vez e alcança sua base inteira por push, WhatsApp, SMS ou RCS. Sem intermediário, sem leilão de anúncio.',
+  },
+];
+
+const CANAIS = [
+  {
+    nome: 'Push',
+    etiqueta: 'Sem custo por envio',
+    destaque: true,
+    icone:
+      '<path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/>',
+    texto:
+      'Notificação na tela de quem instalou seu site no celular. Chega na hora, aparece sem precisar abrir nada e você manda quantas quiser.',
+    alcance: 'Quem autorizou notificações',
+  },
+  {
+    nome: 'WhatsApp',
+    etiqueta: 'Onde seu eleitor já está',
+    icone:
+      '<path d="M12 2a10 10 0 0 0-8.7 15l-1.2 4.3 4.4-1.2A10 10 0 1 0 12 2Zm5.3 14c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1a12 12 0 0 1-5.6-4.8c-.4-.7-.9-1.6-.9-2.5 0-.9.5-1.4.7-1.6.2-.2.4-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.8c0 .2 0 .4-.1.5l-.4.5c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2 1.3 2.3 1.4.2.1.4.1.6-.1l.7-.9c.2-.2.3-.2.5-.1l1.7.8c.2.1.4.2.4.3v1Z"/>',
+    texto:
+      'O canal que o brasileiro abre todo dia. Pela API oficial, com modelos aprovados pela Meta e o consentimento de cada pessoa registrado no cadastro.',
+    alcance: 'Quem confirmou o número',
+  },
+  {
+    nome: 'SMS',
+    etiqueta: 'Chega em qualquer aparelho',
+    icone:
+      '<path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2ZM7 9h10v2H7V9Zm0 4h7v2H7v-2Z"/>',
+    texto:
+      'Não depende de internet, de aplicativo instalado nem de bateria carregada. Quando a mensagem não pode falhar, é o SMS que segura.',
+    alcance: 'Quem confirmou o número',
+  },
+  {
+    nome: 'RCS',
+    etiqueta: 'SMS com imagem e botão',
+    icone:
+      '<path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm-1 14H6l3-4 2 2.7L14 12l4 5Z"/>',
+    texto:
+      'A evolução do SMS: entra na mesma caixa, mas com sua foto, seu número e botões clicáveis. Sua mensagem com cara de campanha, não de aviso de banco.',
+    alcance: 'Quem confirmou o número',
   },
 ];
 
@@ -52,20 +92,6 @@ const RECURSOS = [
     titulo: 'CRM de apoiadores',
     texto:
       'Cada pessoa que se cadastra vira ficha: telefone, cidade, CEP, de onde veio. Filtre por bairro, por origem, por quem confirmou o número.',
-  },
-  {
-    icone:
-      '<path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/>',
-    titulo: 'Push que não custa por envio',
-    texto:
-      'A notificação chega na tela do celular sem você pagar por mensagem. É o canal mais barato de falar com quem já demonstrou apoio — e o único que não some no feed.',
-  },
-  {
-    icone:
-      '<path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/>',
-    titulo: 'SMS e RCS quando o assunto é urgente',
-    texto:
-      'Push alcança quem instalou. SMS chega em qualquer aparelho, mesmo desligado da internet. RCS leva imagem e botão na mesma caixa do SMS.',
   },
   {
     icone:
@@ -108,6 +134,7 @@ const PLANOS = [
     itens: [
       'Tudo do plano Vereador',
       '5.000 SMS inclusos por mês',
+      'WhatsApp pela API oficial',
       'RCS com imagem e botões',
       'Segmentação por bairro e por tag',
       'Agendamento de disparos',
@@ -139,6 +166,10 @@ const PERGUNTAS = [
     r: 'Anúncio é alcance alugado: você paga toda vez e a plataforma decide quem vê. Aqui o contato é seu. Uma vez que a pessoa se cadastrou, você fala com ela quantas vezes quiser, sem leilão e sem algoritmo no meio. O ideal é usar os dois: anúncio para trazer a pessoa, plataforma para não perder ela.',
   },
   {
+    p: 'Como funciona o disparo por WhatsApp?',
+    r: 'Pela API oficial da Meta, não por chip ou aplicativo pirata — esses derrubam o número e queimam a campanha. Na prática isso significa duas coisas: a pessoa precisa ter autorizado no cadastro, o que a plataforma já registra, e a mensagem sai de um modelo aprovado pela Meta antes do envio. A gente cuida da aprovação junto com você. É mais burocrático que SMS, e em troca não corre risco de bloqueio.',
+  },
+  {
     p: 'Isso está de acordo com a legislação eleitoral?',
     r: 'A plataforma registra o consentimento de cada pessoa com data, IP e o texto aceito, e confirma o número por código antes de qualquer envio. Todo disparo tem origem identificável e caminho de descadastro. Ainda assim, a responsabilidade pelo conteúdo e pelo enquadramento na legislação é da campanha — vale alinhar com seu advogado eleitoral.',
   },
@@ -164,6 +195,18 @@ function render() {
       <span class="passo-numero">${p.numero}</span>
       <h3>${esc(p.titulo)}</h3>
       <p>${esc(p.texto)}</p>
+    </article>`
+  ).join('');
+
+  const canais = CANAIS.map(
+    (c, i) => `<article class="canal ${c.destaque ? 'canal-destaque' : ''} revelar" style="--atraso:${i * 60}ms">
+      <span class="canal-icone">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor" aria-hidden="true">${c.icone}</svg>
+      </span>
+      <h3>${esc(c.nome)}</h3>
+      <span class="canal-etiqueta">${esc(c.etiqueta)}</span>
+      <p>${esc(c.texto)}</p>
+      <p class="canal-alcance">Alcança: <b>${esc(c.alcance)}</b></p>
     </article>`
   ).join('');
 
@@ -443,9 +486,38 @@ ${tagsDeIcone()}
   .passo h3 { font-size: 1.13rem; font-weight: 700; }
   .passo p { margin-top: .6rem; color: #a8b2bf; font-size: .94rem; }
 
+  /* ---------------- canais ---------------- */
+  .canais { display: grid; gap: 1.1rem; }
+  @media (min-width: 640px) { .canais { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1040px) { .canais { grid-template-columns: repeat(4, 1fr); } }
+  .canal {
+    background: #fff; border: 1px solid var(--borda); border-radius: 16px;
+    padding: 1.7rem 1.5rem; display: flex; flex-direction: column;
+    transition: transform 220ms var(--saida), box-shadow 220ms ease, border-color 220ms ease;
+  }
+  .canal-destaque { border-color: rgba(13,79,158,.35); background: linear-gradient(170deg, #f4f8ff, #fff 62%); }
+  @media (hover: hover) and (pointer: fine) {
+    .canal:hover { transform: translateY(-3px); border-color: #cdd8ea; box-shadow: 0 14px 34px -18px rgba(8,53,108,.35); }
+  }
+  .canal-icone {
+    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+    background: rgba(13,79,158,.09); color: var(--azul); margin-bottom: 1rem;
+  }
+  .canal h3 { font-size: 1.1rem; font-weight: 720; }
+  .canal-etiqueta {
+    display: inline-block; align-self: flex-start; margin-top: .45rem;
+    font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--verde);
+  }
+  .canal p { margin-top: .7rem; color: var(--tinta-media); font-size: .92rem; }
+  .canal-alcance {
+    margin-top: auto; padding-top: .9rem; font-size: .82rem; color: var(--tinta-fraca);
+  }
+  .canal-alcance b { color: var(--tinta-media); font-weight: 620; }
+
   .recursos { display: grid; gap: 1.1rem; }
   @media (min-width: 720px) { .recursos { grid-template-columns: repeat(2, 1fr); } }
-  @media (min-width: 1000px) { .recursos { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1040px) { .recursos { grid-template-columns: repeat(4, 1fr); } }
   .recurso {
     background: #fff; border: 1px solid var(--borda); border-radius: 16px; padding: 1.6rem 1.5rem;
     transition: transform 220ms var(--saida), box-shadow 220ms ease, border-color 220ms ease;
@@ -585,9 +657,9 @@ ${tagsDeIcone()}
     </a>
     <nav>
       <a href="#como-funciona">Como funciona</a>
+      <a href="#canais">Canais</a>
       <a href="#recursos">Recursos</a>
       <a href="#planos">Planos</a>
-      <a href="#perguntas">Dúvidas</a>
     </nav>
     <div class="topo-acao">
       <a class="botao botao-primario" href="${esc(contato)}">Quero minha página</a>
@@ -604,7 +676,7 @@ ${tagsDeIcone()}
         <p class="chamada entrada">
           Você paga caro para alcançar quem já te segue. Aqui, cada pessoa que
           demonstra apoio vira contato seu — e você fala com ela quando quiser,
-          por push, SMS e RCS, sem leilão de anúncio no meio.
+          por push, WhatsApp, SMS e RCS, sem leilão de anúncio no meio.
         </p>
         <div class="capa-acoes entrada">
           <a class="botao botao-primario botao-grande" href="${esc(contato)}">Quero minha página</a>
@@ -652,7 +724,7 @@ ${tagsDeIcone()}
     <dl class="placa revelar">
       <div><dt>48h</dt><dd>do material enviado ao site no ar</dd></div>
       <div><dt>R$ 0</dt><dd>por notificação push enviada</dd></div>
-      <div><dt>3</dt><dd>canais: push, SMS e RCS</dd></div>
+      <div><dt>4</dt><dd>canais: push, WhatsApp, SMS e RCS</dd></div>
       <div><dt>100%</dt><dd>da base é sua, exportável quando quiser</dd></div>
     </dl>
   </section>
@@ -668,7 +740,18 @@ ${tagsDeIcone()}
     </div>
   </section>
 
-  <section class="secao" id="recursos">
+  <section class="secao" id="canais">
+    <div class="largura">
+      <div class="cabecalho centro">
+        <p class="etiqueta">Canais de disparo</p>
+        <h2>Quatro formas de chegar em quem já te apoia</h2>
+        <p>Você escreve uma vez e escolhe por onde sai. Cada canal alcança um grupo diferente da sua base — e o painel mostra o tamanho de cada um antes de você enviar.</p>
+      </div>
+      <div class="canais">${canais}</div>
+    </div>
+  </section>
+
+  <section class="secao" id="recursos" style="padding-top:0">
     <div class="largura">
       <div class="cabecalho centro">
         <p class="etiqueta">O que você recebe</p>
