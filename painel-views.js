@@ -574,7 +574,13 @@ const CANAIS = [
     chave: 'PUSH',
     nome: 'Push',
     descricao: 'Notificação no celular de quem instalou o WebApp e autorizou.',
-    custo: 'Sem custo por envio',
+    custo: 'Cobrado por envio',
+  },
+  {
+    chave: 'WHATSAPP',
+    nome: 'WhatsApp',
+    descricao: 'Pela API oficial, com modelo aprovado pela Meta antes do envio.',
+    custo: 'Cobrado por conversa',
   },
   {
     chave: 'SMS',

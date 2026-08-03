@@ -341,8 +341,9 @@ router.get('/apoiadores', async (req, res, next) => {
 // ---------------------------------------------------------------------------
 
 /// Quem cada canal alcanca. Push exige autorizacao de notificacao no
-/// aparelho; SMS e RCS exigem numero confirmado, porque ambos trafegam pela
-/// operadora — RCS e entregue na mesma caixa do SMS.
+/// aparelho; WhatsApp, SMS e RCS exigem numero confirmado, porque todos
+/// dependem do telefone — RCS chega na mesma caixa do SMS, e o WhatsApp usa o
+/// mesmo numero que a pessoa confirmou por codigo.
 function filtroDoCanal(canal) {
   if (canal === 'PUSH') return { pushActive: true };
   return { smsValidated: true };
@@ -354,7 +355,7 @@ async function alcancePorCanal(prisma, tenantId, extra = {}) {
     prisma.supporter.count({ where: { ...base, pushActive: true } }),
     prisma.supporter.count({ where: { ...base, smsValidated: true } }),
   ]);
-  return { PUSH: push, SMS: telefone, RCS: telefone };
+  return { PUSH: push, WHATSAPP: telefone, SMS: telefone, RCS: telefone };
 }
 
 async function montarTurbinar(req, res, aviso) {
@@ -401,7 +402,7 @@ router.post('/turbinar', async (req, res, next) => {
     const tenantId = req.tenant.id;
     const b = req.body;
 
-    const channel = ['PUSH', 'SMS', 'RCS'].includes(b.channel) ? b.channel : null;
+    const channel = ['PUSH', 'WHATSAPP', 'SMS', 'RCS'].includes(b.channel) ? b.channel : null;
     const name = texto(b.name, 150);
     const message = texto(b.message, 1000);
     if (!channel || !name || !message) {

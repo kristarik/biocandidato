@@ -41,12 +41,12 @@ const PASSOS = [
 const CANAIS = [
   {
     nome: 'Push',
-    etiqueta: 'Sem custo por envio',
+    etiqueta: 'Chega direto na tela',
     destaque: true,
     icone:
       '<path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22Zm7-6v-5a7 7 0 0 0-5.5-6.8V3a1.5 1.5 0 0 0-3 0v1.2A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/>',
     texto:
-      'Notificação na tela de quem instalou seu site no celular. Chega na hora, aparece sem precisar abrir nada e você manda quantas quiser.',
+      'Notificação na tela de quem instalou seu site no celular. Aparece sem a pessoa precisar abrir nada e não disputa espaço com o feed de ninguém.',
     alcance: 'Quem autorizou notificações',
   },
   {
@@ -118,9 +118,9 @@ const PLANOS = [
     itens: [
       'Site próprio no ar em 6 horas',
       'Apoiadores ilimitados',
-      'Push ilimitado e sem custo por envio',
+      'Push, SMS, RCS e WhatsApp no mesmo painel',
       'CRM com filtros e exportação',
-      '1.000 SMS inclusos por mês',
+      '1.000 envios inclusos por mês, em qualquer canal',
       'Suporte por WhatsApp',
     ],
   },
@@ -133,7 +133,7 @@ const PLANOS = [
     resumo: 'Para quem precisa falar com a cidade inteira, com segmentação.',
     itens: [
       'Tudo do plano Vereador',
-      '5.000 SMS inclusos por mês',
+      '5.000 envios inclusos por mês, em qualquer canal',
       'WhatsApp pela API oficial',
       'RCS com imagem e botões',
       'Segmentação por bairro e por tag',
@@ -149,7 +149,7 @@ const PLANOS = [
     itens: [
       'Tudo do plano Prefeito',
       'Vários candidatos no mesmo painel',
-      'Volume de SMS negociado',
+      'Volume de envios negociado',
       'Integração com seu provedor',
       'Gerente de conta dedicado',
     ],
@@ -163,7 +163,7 @@ const PERGUNTAS = [
   },
   {
     p: 'Qual a diferença para impulsionar no Instagram?',
-    r: 'Anúncio é alcance alugado: você paga toda vez e a plataforma decide quem vê. Aqui o contato é seu. Uma vez que a pessoa se cadastrou, você fala com ela quantas vezes quiser, sem leilão e sem algoritmo no meio. O ideal é usar os dois: anúncio para trazer a pessoa, plataforma para não perder ela.',
+    r: 'No anúncio você paga pelo alcance e a plataforma decide quem vê — e pode ser que nem quem te segue veja. Aqui o contato é seu: você paga pelo envio e a mensagem chega em quem você escolheu, sem leilão e sem algoritmo no meio. O ideal é usar os dois: anúncio para trazer a pessoa, plataforma para não perder ela depois.',
   },
   {
     p: 'Como funciona o disparo por WhatsApp?',
@@ -671,7 +671,7 @@ ${tagsDeIcone()}
   <section class="capa">
     <div class="largura capa-grade">
       <div>
-        <span class="marcador entrada"><i class="ponto"></i> <b>Push ilimitado</b> · sem custo por envio</span>
+        <span class="marcador entrada"><i class="ponto"></i> <b>Push, WhatsApp, SMS e RCS</b> · num painel só</span>
         <h1 class="entrada">A base da sua campanha precisa ser <em>sua</em>.</h1>
         <p class="chamada entrada">
           Você paga caro para alcançar quem já te segue. Aqui, cada pessoa que
@@ -781,7 +781,7 @@ ${tagsDeIcone()}
         <div class="lado bom revelar" style="--atraso:70ms">
           <h3>Com base própria</h3>
           <ul>
-            <li><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg> Fala quantas vezes quiser, sem pagar por alcance</li>
+            <li><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg> Paga pelo envio, não pelo leilão de alcance</li>
             <li><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg> A mensagem chega direto no aparelho</li>
             <li><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg> Sabe nome, cidade, CEP e de onde ela veio</li>
             <li><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg> A base continua sua na próxima eleição</li>
@@ -796,7 +796,7 @@ ${tagsDeIcone()}
       <div class="cabecalho centro">
         <p class="etiqueta">Planos</p>
         <h2>Escolha pelo tamanho da sua disputa</h2>
-        <p>Push ilimitado em todos os planos. Você só paga a mais quando manda SMS, que tem custo de operadora.</p>
+        <p>Todos os planos incluem os quatro canais e um pacote mensal de envios. Acima do pacote, você paga só o que usar.</p>
       </div>
       <div class="planos">${planos}</div>
     </div>
