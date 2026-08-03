@@ -1,4 +1,4 @@
-const { esc, cor } = require('./html');
+const { esc, cor, tagsDeIcone } = require('./html');
 const graficos = require('./painel-graficos');
 
 const ESTILO = `
@@ -213,6 +213,7 @@ function pagina({ titulo, tenant, aba, corpo, recado }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(titulo)} · Candidato Online</title>
+${tagsDeIcone()}
 <style>${ESTILO}
   :root { --primaria: ${principal}; }
 </style>
@@ -251,9 +252,11 @@ function telaEntrar({ erro, email }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · Candidato Online</title>
+${tagsDeIcone()}
 <style>${ESTILO}
   body { display: grid; place-items: center; min-height: 100vh; padding: 1.5rem; }
   .caixa { width: 100%; max-width: 380px; }
+  .caixa img.logo { display: block; width: 84px; margin: 0 auto 1rem; }
   .caixa h1 { text-align: center; margin-bottom: .3rem; }
   .caixa .sub { text-align: center; color: var(--suave); font-size: .88rem; margin: 0 0 1.5rem; }
   .caixa button { width: 100%; padding: .75rem; }
@@ -261,6 +264,7 @@ function telaEntrar({ erro, email }) {
 </head>
 <body>
 <div class="caixa">
+  <img class="logo" src="/assets/icone-192.png" alt="" width="84" height="84">
   <h1>Candidato Online</h1>
   <p class="sub">Acesse o painel da sua campanha</p>
   <div class="cartao">

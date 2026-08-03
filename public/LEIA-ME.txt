@@ -1,0 +1,8 @@
+Arquivos publicos do Candidato Online.
+
+Tudo nesta pasta e servido em /assets/<nome-do-arquivo> e vai para o
+repositorio, subindo junto no deploy.
+
+Use apenas para o que pertence ao produto: logo, icones, favicon, manifest.
+Foto e banner de CANDIDATO nao entram aqui - esses variam por tenant e
+continuam vindo por URL, ate existir upload por candidato.

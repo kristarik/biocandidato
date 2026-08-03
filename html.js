@@ -26,4 +26,13 @@ function urlSegura(valor) {
   }
 }
 
-module.exports = { esc, cor, urlSegura };
+/// Icones da marca, servidos de /assets. O .ico primeiro porque navegadores
+/// antigos ignoram os <link> de PNG e caem no /favicon.ico da raiz.
+function tagsDeIcone() {
+  return `<link rel="icon" href="/assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/icone-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icone-192.png">
+<link rel="apple-touch-icon" href="/assets/icone-apple-180.png">`;
+}
+
+module.exports = { esc, cor, urlSegura, tagsDeIcone };

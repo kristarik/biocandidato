@@ -4,7 +4,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const painel = require('./painel');
 const { inspect, diagnostico } = require('./db');
-const { buscarPorSlug, render, paginaNaoEncontrada } = require('./webapp');
+const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
 const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
 
 const app = express();
@@ -12,6 +12,14 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '16kb' }));
 app.use(cookieParser());
+
+// Arquivos publicos (logo, icones, manifest). Ficam no repositorio e sobem
+// junto no deploy — nao dependem de storage externo. Cache longo porque o
+// conteudo desses arquivos so muda com um novo deploy.
+app.use(
+  '/assets',
+  express.static('public', { maxAge: '7d', fallthrough: true, index: false })
+);
 
 // Antes da rota /:slug, senao "painel" seria interpretado como slug de
 // candidato. O slug "painel" tambem esta na lista de reservados.
@@ -84,6 +92,10 @@ async function tratar(res, acao) {
     res.status(500).json({ erro: 'Erro inesperado. Tente novamente.' });
   }
 }
+
+app.get('/:slug/manifest.json', comTenant, (req, res) => {
+  res.type('application/manifest+json').send(JSON.stringify(manifesto(req.tenant)));
+});
 
 app.post('/:slug/apoiar/iniciar', comTenant, (req, res) =>
   tratar(res, () =>

@@ -1,5 +1,5 @@
 const { getPrisma } = require('./prisma-client');
-const { esc, cor, urlSegura } = require('./html');
+const { esc, cor, urlSegura, tagsDeIcone } = require('./html');
 
 // Icones em SVG inline: sem requisicao externa, herdam a cor do container.
 const ICONES = {
@@ -171,6 +171,10 @@ function render(t) {
 <title>${esc(t.name)}${t.number ? ` ${esc(t.number)}` : ''}</title>
 <meta name="description" content="${esc(t.slogan || t.bio || t.name)}">
 <meta name="theme-color" content="${primaria}">
+${tagsDeIcone()}
+<link rel="manifest" href="/${esc(t.slug)}/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${esc(t.name)}">
 <style>
   :root {
     --primaria: ${primaria};
@@ -642,4 +646,27 @@ async function buscarPorSlug(slug) {
   });
 }
 
-module.exports = { buscarPorSlug, render, paginaNaoEncontrada };
+/// Manifest por candidato: quem instala o WebApp na tela inicial ve o nome e
+/// a cor daquele candidato, nao os da plataforma. O icone ainda e o da marca,
+/// porque nao existe upload de imagem por candidato — quando existir, e aqui
+/// que a foto dele entra.
+function manifesto(t) {
+  return {
+    name: t.name,
+    short_name: t.name.slice(0, 12),
+    description: t.slogan || t.bio?.slice(0, 140) || t.name,
+    start_url: `/${t.slug}`,
+    scope: `/${t.slug}`,
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#ffffff',
+    theme_color: cor(t.primaryColor, '#1e40af'),
+    lang: 'pt-BR',
+    icons: [
+      { src: '/assets/icone-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/assets/icone-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    ],
+  };
+}
+
+module.exports = { buscarPorSlug, render, paginaNaoEncontrada, manifesto };
