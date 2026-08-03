@@ -1,0 +1,64 @@
+// Cria um usuario Master, que administra a plataforma inteira.
+// Uso: npm run master:novo -- --nome "Tarik" --email tarik@candidato.bio
+require('dotenv').config();
+
+const bcrypt = require('bcryptjs');
+const { getPrisma } = require('../prisma-client');
+const { gerarSenha } = require('../provisionar');
+
+function lerArgs(argv) {
+  const args = {};
+  for (let i = 0; i < argv.length; i += 1) {
+    if (!argv[i].startsWith('--')) continue;
+    const chave = argv[i].slice(2);
+    const valor = argv[i + 1];
+    if (valor === undefined || valor.startsWith('--')) args[chave] = true;
+    else {
+      args[chave] = valor;
+      i += 1;
+    }
+  }
+  return args;
+}
+
+async function main() {
+  const args = lerArgs(process.argv.slice(2));
+  if (!args.nome || !args.email) {
+    console.error('Uso: npm run master:novo -- --nome "Seu Nome" --email voce@dominio.com');
+    process.exit(1);
+  }
+
+  const prisma = getPrisma();
+  const email = String(args.email).trim().toLowerCase();
+
+  if (await prisma.user.findUnique({ where: { email } })) {
+    console.error(`O e-mail "${email}" ja esta em uso.`);
+    process.exit(1);
+  }
+
+  const senha = gerarSenha();
+  const user = await prisma.user.create({
+    data: {
+      email,
+      name: String(args.nome).trim(),
+      role: 'MASTER',
+      passwordHash: await bcrypt.hash(senha, 12),
+      mustChangePassword: true,
+    },
+  });
+
+  console.log('\nMaster criado.\n');
+  console.log(`  Painel   /painel/entrar  (entra e cai no /master)`);
+  console.log(`  Login    ${user.email}`);
+  console.log(`  Senha    ${senha}  (temporaria)\n`);
+  console.log('No primeiro acesso o painel exige a troca da senha.\n');
+}
+
+main()
+  .catch((err) => {
+    console.error(`Falhou: ${err.message}`);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await getPrisma().$disconnect();
+  });

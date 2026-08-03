@@ -47,7 +47,8 @@ router.post('/entrar', async (req, res, next) => {
     }
 
     criarCookie(res, resultado);
-    res.redirect('/painel/inicio');
+    // Uma porta de entrada só: o papel decide para onde a pessoa vai.
+    res.redirect(resultado.user.role === 'MASTER' ? '/master' : '/painel/inicio');
   } catch (err) {
     next(err);
   }
@@ -60,6 +61,13 @@ router.post('/sair', (req, res) => {
 
 // Tudo daqui para baixo exige sessao. O tenant vem do token, nunca da URL.
 router.use(exigirSessao);
+
+// A sessao do Master nao tem candidato, entao nenhuma tela daqui faz sentido
+// para ele — exceto a troca da propria senha.
+router.use((req, res, next) => {
+  if (req.tenant || req.path === '/senha' || req.path === '/sair') return next();
+  res.redirect('/master');
+});
 
 // Enquanto a senha entregue pelo Master nao for trocada, o painel inteiro fica
 // atras dessa tela. Bloquear so a interface nao bastaria: sem interceptar aqui,
@@ -82,6 +90,7 @@ function mostrarSenha(req, res, erro) {
     vistas.pagina({
       titulo: obrigatoria ? 'Crie sua senha' : 'Trocar senha',
       tenant: req.tenant,
+      nome: req.sessao.nome,
       aba: 'senha',
       recado: erro ? null : recadoDaUrl(req),
       corpo: vistas.telaSenha({
@@ -107,7 +116,11 @@ router.post('/senha', async (req, res, next) => {
     });
 
     if (resultado.erro) return mostrarSenha(req, res, resultado.erro);
-    voltar(res, '/painel/inicio', 'Senha alterada. Use a nova no próximo acesso.');
+    voltar(
+      res,
+      req.sessao.papel === 'MASTER' ? '/master' : '/painel/inicio',
+      'Senha alterada. Use a nova no próximo acesso.'
+    );
   } catch (err) {
     next(err);
   }
@@ -458,7 +471,7 @@ async function montarTurbinar(req, res, aviso) {
       aba: 'turbinar',
       recado: recadoDaUrl(req),
       corpo: vistas.telaTurbinar({
-        alcance,
+        alcance: { ...alcance, saldo: req.tenant.creditBalance },
         cidades: agrupadoCidades.map((c) => c.city).filter(Boolean).sort(),
         campanhas,
         aviso,
@@ -505,6 +518,17 @@ router.post('/turbinar', async (req, res, next) => {
 
     if (!totalRecipients) {
       return voltar(res, '/painel/turbinar', 'Nenhum apoiador se encaixa nesses filtros.', 'erro');
+    }
+
+    // Barrar aqui, e nao no disparo: montar uma campanha que nunca poderia
+    // sair daria ao candidato a impressao de que a mensagem esta a caminho.
+    if (totalRecipients > req.tenant.creditBalance) {
+      return voltar(
+        res,
+        '/painel/turbinar',
+        `Esta campanha precisa de ${totalRecipients.toLocaleString('pt-BR')} disparos e você tem ${req.tenant.creditBalance.toLocaleString('pt-BR')}. Fale com a gente para liberar mais.`,
+        'erro'
+      );
     }
 
     await prisma.campaign.create({

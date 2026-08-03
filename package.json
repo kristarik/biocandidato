@@ -19,7 +19,8 @@
     "candidato:exemplo": "node scripts/conteudo-exemplo.js",
     "postinstall": "prisma generate",
     "candidato:senha": "node scripts/redefinir-senha.js",
-    "candidato:apoiadores": "node scripts/apoiadores-exemplo.js"
+    "candidato:apoiadores": "node scripts/apoiadores-exemplo.js",
+    "master:novo": "node scripts/novo-master.js"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",

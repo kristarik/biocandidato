@@ -232,11 +232,17 @@ function iconeMenu(nome, tamanho = 21) {
   return `<svg viewBox="0 0 24 24" width="${tamanho}" height="${tamanho}" fill="currentColor" aria-hidden="true">${ICONES_MENU[nome]}</svg>`;
 }
 
-function pagina({ titulo, tenant, aba, corpo, recado }) {
+function pagina({ titulo, tenant, aba, corpo, recado, nome }) {
   const principal = cor(tenant?.primaryColor, '#1e40af');
   const item = (chave, rotulo, destino, extra = '') =>
     `<a href="${destino}" class="${aba === chave ? 'ativa' : ''}" ${extra}>
       ${iconeMenu(chave)}<span>${rotulo}</span></a>`;
+
+  // Sem candidato na sessao (caso do Master trocando a propria senha) nao ha
+  // menu de aplicativo nem identidade de campanha para vestir a pagina.
+  const identidade = tenant
+    ? `<div class="marca"><div>${esc(tenant.name)}</div><span>candidato.bio/${esc(tenant.slug)}</span></div>`
+    : `<div class="marca"><div>${esc(nome || 'Administração')}</div><span>Painel Master</span></div>`;
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -258,7 +264,7 @@ ${tagsDeIcone()}
         alt="Candidato Online" width="213" height="72">
     </a>
     <div class="divisor"></div>
-    <div class="marca"><div>${esc(tenant.name)}</div><span>candidato.bio/${esc(tenant.slug)}</span></div>
+    ${identidade}
     <div class="acoes-topo">
       <a class="botao discreto" href="/painel/senha" title="Trocar senha" aria-label="Trocar senha">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -275,7 +281,9 @@ ${tagsDeIcone()}
   ${corpo}
 </main>
 
-<nav class="barra-app">
+${
+  tenant
+    ? `<nav class="barra-app">
   ${item('inicio', 'Início', '/painel/inicio')}
   ${item('apoiadores', 'Apoiadores', '/painel/apoiadores')}
   <a href="/painel/turbinar" class="foguete ${aba === 'turbinar' ? 'ativa' : ''}">
@@ -283,7 +291,9 @@ ${tagsDeIcone()}
   </a>
   ${item('conteudo', 'Conteúdo', '/painel/conteudo')}
   ${item('site', 'Meu site', `/${esc(tenant.slug)}`, 'target="_blank" rel="noopener"')}
-</nav>
+</nav>`
+    : '<div style="text-align:center;padding:0 1.25rem 2rem"><a href="/master">← Voltar ao painel Master</a></div>'
+}
 </body>
 </html>`;
 }
@@ -655,7 +665,22 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
       </table></div>`
     : '<p class="vazio">Nenhuma campanha criada ainda.</p>';
 
+  const saldo = alcance.saldo;
   return `<h1>Turbinar</h1>
+
+<div class="cartao" style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
+  <div>
+    <div class="rotulo" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--suave)">Saldo de disparos</div>
+    <div style="font-size:2rem;font-weight:650;letter-spacing:-.03em" class="${saldo <= 0 ? 'saldo-zerado' : ''}">${saldo.toLocaleString('pt-BR')}</div>
+  </div>
+  <p class="vazio" style="flex:1;min-width:14rem;margin:0">
+    ${
+      saldo <= 0
+        ? 'Você está sem saldo. Fale com a gente para liberar disparos antes de criar a campanha.'
+        : 'Cada pessoa alcançada consome um disparo. Precisando de mais, é só falar com a gente.'
+    }
+  </p>
+</div>
 
 <p class="recado alerta">
   <strong>Nenhum provedor de envio está conectado ainda.</strong>
@@ -895,4 +920,5 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
 
 module.exports = {
   pagina, telaEntrar, telaInicio, telaApoiadores, telaConteudo, telaTurbinar, telaSenha,
+  ESTILO, formatarData, formatarTelefone,
 };

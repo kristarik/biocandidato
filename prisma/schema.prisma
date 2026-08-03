@@ -41,10 +41,16 @@ model Tenant {
   primaryColor   String @default("#1e40af") @map("primary_color") @db.Char(7)
   secondaryColor String @default("#f59e0b") @map("secondary_color") @db.Char(7)
 
+  /// Saldo de disparos. E cache do extrato em credit_transactions, atualizado
+  /// na mesma transacao do lancamento — o extrato e que manda, porque so ele
+  /// responde quanto o candidato comprou e quanto ja gastou.
+  creditBalance Int @default(0) @map("credit_balance")
+
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  credits       CreditTransaction[]
   users         TenantUser[]
   supporters    Supporter[]
   campaigns     Campaign[]
@@ -550,6 +556,40 @@ model Proposal {
   @@index([tenantId, position])
   @@index([tenantId, published])
   @@map("proposals")
+}
+
+enum CreditType {
+  COMPRA
+  BONUS
+  AJUSTE
+  CONSUMO
+  ESTORNO
+}
+
+/// Extrato de disparos. Toda entrada e saida de credito vira uma linha aqui,
+/// e a linha nunca e editada nem apagada: corrigir e lancar um ESTORNO. Sem
+/// isso nao ha como auditar uma cobranca contestada.
+model CreditTransaction {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  type CreditType
+  /// Positivo credita, negativo debita.
+  amount Int
+  /// Saldo apos o lancamento, congelado para o extrato nao depender de
+  /// recalcular a soma toda vez.
+  balanceAfter Int @map("balance_after")
+
+  description String? @db.VarChar(250)
+  campaignId  String? @map("campaign_id") @db.Char(36)
+  createdById String? @map("created_by_id") @db.Char(36)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, type])
+  @@map("credit_transactions")
 }
 
 enum BannerSlot {

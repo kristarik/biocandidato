@@ -68,8 +68,10 @@ async function autenticar(email, senha) {
     return { erro: 'E-mail ou senha incorretos.' };
   }
 
+  // O Master administra a plataforma e nao pertence a candidato nenhum, entao
+  // a falta de vinculo so e erro para quem nao e Master.
   const vinculo = user.tenants[0];
-  if (!vinculo) {
+  if (!vinculo && user.role !== 'MASTER') {
     return { erro: 'Sua conta ainda nao esta ligada a nenhum candidato.' };
   }
 
@@ -79,12 +81,12 @@ async function autenticar(email, senha) {
     data: { lastLoginAt: new Date() },
   });
 
-  return { user, tenant: vinculo.tenant };
+  return { user, tenant: vinculo?.tenant || null };
 }
 
 function criarCookie(res, { user, tenant }) {
   const token = jwt.sign(
-    { sub: user.id, tid: tenant.id, nome: user.name, papel: user.role },
+    { sub: user.id, tid: tenant?.id || null, nome: user.name, papel: user.role },
     segredo(),
     { expiresIn: `${DURACAO_HORAS}h` }
   );
@@ -94,11 +96,15 @@ function criarCookie(res, { user, tenant }) {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: DURACAO_HORAS * 3600_000,
-    path: '/painel',
+    // Raiz, e nao /painel: o Master vive em /master e precisa do mesmo cookie.
+    path: '/',
   });
 }
 
 function limparCookie(res) {
+  res.clearCookie(COOKIE, { path: '/' });
+  // O cookie antigo foi gravado em /painel; sem limpar os dois, uma sessao
+  // criada antes desta mudanca sobreviveria ao logout.
   res.clearCookie(COOKIE, { path: '/painel' });
 }
 
@@ -117,10 +123,15 @@ async function exigirSessao(req, res, next) {
     // desativada ou uma senha recem-trocada precisam valer na hora, sem
     // esperar a sessao expirar.
     const [tenant, user] = await Promise.all([
-      prisma.tenant.findUnique({ where: { id: dados.tid } }),
+      dados.tid ? prisma.tenant.findUnique({ where: { id: dados.tid } }) : null,
       prisma.user.findUnique({ where: { id: dados.sub } }),
     ]);
-    if (!tenant || !tenant.active || !user || !user.active) {
+    if (!user || !user.active) {
+      limparCookie(res);
+      return res.redirect('/painel/entrar');
+    }
+    // Sessao de candidato exige tenant ativo; a de Master nao tem tenant.
+    if (dados.tid && (!tenant || !tenant.active)) {
       limparCookie(res);
       return res.redirect('/painel/entrar');
     }
@@ -190,6 +201,14 @@ async function trocarSenha({ userId, atual, nova, confirmacao, ip }) {
   return { ok: true };
 }
 
+/// So o Master entra na administracao da plataforma. Vem depois de
+/// exigirSessao, que ja garantiu que a conta existe e esta ativa.
+function exigirMaster(req, res, next) {
+  if (req.sessao?.papel !== 'MASTER') return res.redirect('/painel/entrar');
+  next();
+}
+
 module.exports = {
-  autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, COOKIE, MINIMO_SENHA,
+  autenticar, criarCookie, limparCookie, exigirSessao, exigirMaster,
+  trocarSenha, COOKIE, MINIMO_SENHA,
 };

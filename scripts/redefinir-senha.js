@@ -1,15 +1,11 @@
-// Gera uma nova senha para o acesso de um candidato.
+// Gera uma nova senha temporaria para o acesso de um candidato.
+// A mesma acao existe na ficha do candidato no painel Master.
+//
 // Uso: npm run candidato:senha -- dra-maria
 require('dotenv').config();
 
-const crypto = require('node:crypto');
-const bcrypt = require('bcryptjs');
 const { getPrisma } = require('../prisma-client');
-
-function gerarSenha() {
-  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-  return Array.from(crypto.randomBytes(14), (b) => alfabeto[b % alfabeto.length]).join('');
-}
+const { redefinirSenha, ErroProvisionamento } = require('../provisionar');
 
 async function main() {
   const slug = process.argv[2];
@@ -18,38 +14,24 @@ async function main() {
     process.exit(1);
   }
 
-  const prisma = getPrisma();
-  const vinculo = await prisma.tenantUser.findFirst({
-    where: { tenant: { slug } },
-    include: { user: true, tenant: true },
-  });
-
-  if (!vinculo) {
-    console.error(`Nenhum acesso encontrado para "${slug}".`);
+  const tenant = await getPrisma().tenant.findUnique({ where: { slug } });
+  if (!tenant) {
+    console.error(`Candidato "${slug}" nao encontrado.`);
     process.exit(1);
   }
 
-  const senha = gerarSenha();
-  await prisma.user.update({
-    where: { id: vinculo.userId },
-    data: {
-      passwordHash: await bcrypt.hash(senha, 12),
-      // Senha redefinida tambem e temporaria: o caminho ate o dono passa por
-      // um canal que outras pessoas podem ler.
-      mustChangePassword: true,
-    },
-  });
+  const { senha, email } = await redefinirSenha(tenant.id);
 
-  console.log(`\nSenha redefinida para ${vinculo.tenant.name}.\n`);
-  console.log(`  Painel   /painel/entrar`);
-  console.log(`  Login    ${vinculo.user.email}`);
+  console.log(`\nSenha redefinida para ${tenant.name}.\n`);
+  console.log('  Painel   /painel/entrar');
+  console.log(`  Login    ${email}`);
   console.log(`  Senha    ${senha}  (temporaria)\n`);
   console.log('No proximo acesso o painel exige a troca antes de liberar o restante.\n');
 }
 
 main()
   .catch((err) => {
-    console.error(`Falhou: ${err.message}`);
+    console.error(`\n${err instanceof ErroProvisionamento ? err.message : `Falhou: ${err.message}`}`);
     process.exitCode = 1;
   })
   .finally(async () => {
