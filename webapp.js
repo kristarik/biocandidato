@@ -263,7 +263,9 @@ ${tagsDeIcone()}
   img { max-width: 100%; display: block; }
 
   /* ---------- topo ---------- */
-  .topo { position: relative; text-align: center; }
+  /* O respiro fica no fim do bloco de identidade, e nao no topo da secao
+     seguinte: assim ele existe mesmo quando a primeira secao muda de lugar. */
+  .topo { position: relative; text-align: center; padding-bottom: 1.6rem; }
   /* Com banner cadastrado, a imagem manda. Sem banner, a faixa usa a cor do
      candidato em vez de preto: identidade visual em vez de tarja vazia. */
   .topo .capa {
