@@ -672,19 +672,50 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
     </span>
   </label>`;
 
+  const ROTULO_CAMPANHA = {
+    DRAFT: 'Aguardando envio',
+    SCHEDULED: 'Agendada',
+    SENDING: 'Enviando',
+    SENT: 'Enviada',
+    FAILED: 'Falhou',
+    CANCELED: 'Cancelada',
+  };
+
   const historico = campanhas.length
     ? `<div class="tabela-rolavel"><table>
-        <thead><tr><th>Campanha</th><th>Canal</th><th>Destinatários</th><th>Status</th><th>Criada</th></tr></thead>
+        <thead><tr>
+          <th>Campanha</th><th>Canal</th><th>Público</th>
+          <th>Enviadas</th><th>Status</th><th>Criada</th><th></th>
+        </tr></thead>
         <tbody>${campanhas
-          .map(
-            (c) => `<tr>
+          .map((c) => {
+            const podeEnviar = c.status === 'DRAFT' && c.channel === 'PUSH';
+            const progresso =
+              c.status === 'SENDING' && c.totalRecipients
+                ? ` <span class="vazio">(${Math.round(((c.totalSent + c.totalFailed) / c.totalRecipients) * 100)}%)</span>`
+                : '';
+            return `<tr>
               <td>${esc(c.name)}</td>
               <td>${esc(c.channel)}</td>
               <td>${c.totalRecipients.toLocaleString('pt-BR')}</td>
-              <td><span class="etiqueta">${esc(c.status)}</span></td>
+              <td>${c.totalSent.toLocaleString('pt-BR')}${
+                c.totalFailed ? ` <span class="vazio">· ${c.totalFailed} falha(s)</span>` : ''
+              }</td>
+              <td><span class="etiqueta ${c.status === 'SENT' ? 'completo' : c.status === 'SENDING' ? 'pendente' : ''}">${
+                esc(ROTULO_CAMPANHA[c.status] || c.status)
+              }</span>${progresso}</td>
               <td>${esc(formatarData(c.createdAt))}</td>
-            </tr>`
-          )
+              <td>${
+                podeEnviar
+                  ? `<form method="post" action="/painel/turbinar/${esc(c.id)}/enviar"
+                       onsubmit="return confirm('Enviar para ${c.totalRecipients} pessoas? Isso desconta do seu saldo e não pode ser desfeito.')">
+                       <button type="submit">Enviar agora</button></form>`
+                  : c.status === 'DRAFT'
+                    ? '<span class="vazio">Aguarda provedor</span>'
+                    : ''
+              }</td>
+            </tr>`;
+          })
           .join('')}</tbody>
       </table></div>`
     : '<p class="vazio">Nenhuma campanha criada ainda.</p>';
@@ -707,9 +738,9 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
 </div>
 
 <p class="recado alerta">
-  <strong>Nenhum provedor de envio está conectado ainda.</strong>
-  As campanhas são montadas, o público é calculado e tudo fica salvo — mas o
-  disparo só acontece depois que o gateway de Push, SMS e RCS for integrado.
+  <strong>O push já dispara de verdade.</strong>
+  WhatsApp, SMS e RCS ficam salvos como campanha, mas só saem depois que o
+  provedor de mensagens for conectado.
 </p>
 
 <div class="cartao">

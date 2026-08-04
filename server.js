@@ -11,6 +11,7 @@ const { iniciar, completar, ErroCadastro } = require('./cadastro');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
 const push = require('./push');
+const disparo = require('./disparo');
 const { getPrisma } = require('./prisma-client');
 
 const app = express();
@@ -221,6 +222,22 @@ app.use((err, req, res, next) => {
   res.status(500).type('html').send(paginaNaoEncontrada());
 });
 
+/// Gatilho externo do disparo, para um cron do hPanel acelerar a fila sem
+/// esperar o intervalo. Protegido pelo mesmo token do diagnostico: sem ele,
+/// qualquer um poderia martelar a fila de fora.
+app.get('/tarefas/disparo', async (req, res) => {
+  const esperado = process.env.DEBUG_TOKEN;
+  if (!esperado || req.query.token !== esperado) return res.status(404).end();
+  try {
+    res.json(await disparo.rodada());
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.listen(PORT, HOST, () => {
   console.log(`Candidato Online ouvindo em http://${HOST}:${PORT}`);
+  // A fila vive no banco, entao o laco pode comecar e parar junto com o
+  // processo: se a hospedagem reiniciar o app, o disparo retoma de onde parou.
+  disparo.iniciarLaco();
 });

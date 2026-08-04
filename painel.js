@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { getPrisma } = require('./prisma-client');
 const midia = require('./midia');
+const disparo = require('./disparo');
 const {
   autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, MINIMO_SENHA,
 } = require('./auth');
@@ -571,9 +572,27 @@ router.post('/turbinar', async (req, res, next) => {
     voltar(
       res,
       '/painel/turbinar',
-      `Campanha criada para ${totalRecipients} pessoas. O disparo aguarda a conexão do provedor.`
+      channel === 'PUSH'
+        ? `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. Clique em "Enviar agora" para disparar.`
+        : `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. O envio por ${channel} aguarda a conexão do provedor.`
     );
   } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/turbinar/:id/enviar', async (req, res, next) => {
+  try {
+    const { total } = await disparo.liberar(req.params.id, req.tenant.id, req.sessao.userId);
+    voltar(
+      res,
+      '/painel/turbinar',
+      `Disparo liberado para ${total.toLocaleString('pt-BR')} pessoas. O envio começa em instantes.`
+    );
+  } catch (err) {
+    if (err instanceof disparo.ErroDisparo) {
+      return voltar(res, '/painel/turbinar', err.message, 'erro');
+    }
     next(err);
   }
 });
