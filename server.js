@@ -211,6 +211,9 @@ app.get('/:slug', async (req, res, next) => {
       render(tenant, {
         chavePush: push.chavePublica(),
         proporcaoCapa: await proporcaoDaCapa(tenant.bannerUrl),
+        // Endereco absoluto para a previa do link: o WhatsApp busca a imagem
+        // de fora, entao caminho relativo nao resolve para ele.
+        origem: `${req.protocol}://${req.get('host')}`,
       })
     );
   } catch (err) {

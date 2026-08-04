@@ -92,8 +92,14 @@ function blocoApoio(indice, ancora) {
 </section>`;
 }
 
-function render(t, { chavePush, proporcaoCapa } = {}) {
+function render(t, { chavePush, proporcaoCapa, origem = '' } = {}) {
   const primaria = cor(t.primaryColor, '#1e40af');
+
+  /// Imagem da previa quando o link e colado no WhatsApp ou nas redes. Sem
+  /// ela, o aplicativo pega o icone da plataforma e o compartilhamento vira
+  /// propaganda nossa em vez do candidato. Precisa ser endereco absoluto.
+  const caminhoDaPrevia = t.photos[0]?.url || t.bannerUrl || t.photoUrl;
+  const imagemDaPrevia = caminhoDaPrevia ? `${origem}${caminhoDaPrevia}` : '';
 
   /// Cartaz: imagem em pe ou quase quadrada. A capa passa a seguir a
   /// proporcao da propria arte em vez da faixa fixa, para a peca aparecer
@@ -235,6 +241,16 @@ function render(t, { chavePush, proporcaoCapa } = {}) {
 <title>${esc(t.name)}${t.number ? ` ${esc(t.number)}` : ''}</title>
 <meta name="description" content="${esc(t.slogan || t.bio || t.name)}">
 <meta name="theme-color" content="${primaria}">
+<meta property="og:type" content="profile">
+<meta property="og:title" content="${esc(t.name)}${t.number ? ` ${esc(t.number)}` : ''}">
+<meta property="og:description" content="${esc(t.slogan || t.bio || t.name)}">
+${
+  imagemDaPrevia
+    ? `<meta property="og:image" content="${esc(imagemDaPrevia)}">
+<meta property="og:image:width" content="1200">
+<meta name="twitter:card" content="summary_large_image">`
+    : ''
+}
 ${tagsDeIcone()}
 <link rel="manifest" href="/${esc(t.slug)}/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -676,20 +692,47 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     var recado = TEXTO_COMPARTILHAR + ' ' + enderecoDoSite;
 
     document.querySelectorAll('.peca .compartilhar').forEach(function (botao) {
-      botao.addEventListener('click', function () {
+      botao.addEventListener('click', async function () {
         imagemEscolhida = new URL(botao.dataset.imagem, location.origin).href;
+
+        // A bandeja do sistema vem primeiro porque e a unica que leva a arte
+        // como foto. Link de aplicativo so carrega texto, e o apoiador acaba
+        // postando um endereco em vez da peca.
+        if (await compartilharArquivo()) return;
         folha.showModal();
       });
     });
 
+    // As artes sao guardadas em WebP por peso, mas o WhatsApp trata arquivo
+    // .webp como figurinha. Convertendo para JPEG antes de sair, a arte chega
+    // como foto em qualquer aplicativo.
+    async function arteComoJpeg() {
+      var resposta = await fetch(imagemEscolhida);
+      var blob = await resposta.blob();
+      var bitmap = await createImageBitmap(blob);
+
+      var tela = document.createElement('canvas');
+      tela.width = bitmap.width;
+      tela.height = bitmap.height;
+      var pincel = tela.getContext('2d');
+      // Fundo branco antes de desenhar: JPEG nao guarda transparencia, e sem
+      // isso area transparente viraria preto.
+      pincel.fillStyle = '#fff';
+      pincel.fillRect(0, 0, tela.width, tela.height);
+      pincel.drawImage(bitmap, 0, 0);
+
+      return new Promise(function (resolve) {
+        tela.toBlob(function (saida) { resolve(saida || blob); }, 'image/jpeg', 0.92);
+      });
+    }
+
     // Baixa a arte para o aparelho. E o unico caminho ate o Instagram, que nao
     // aceita publicacao por link: a pessoa salva e sobe no app.
     async function baixarArte() {
-      var resposta = await fetch(imagemEscolhida);
-      var arquivo = await resposta.blob();
+      var arquivo = await arteComoJpeg();
       var link = document.createElement('a');
       link.href = URL.createObjectURL(arquivo);
-      link.download = SLUG + '.webp';
+      link.download = SLUG + '.jpg';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -701,9 +744,8 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     async function compartilharArquivo() {
       if (!navigator.canShare) return false;
       try {
-        var resposta = await fetch(imagemEscolhida);
-        var blob = await resposta.blob();
-        var arquivo = new File([blob], SLUG + '.webp', { type: blob.type });
+        var blob = await arteComoJpeg();
+        var arquivo = new File([blob], SLUG + '.jpg', { type: 'image/jpeg' });
         if (!navigator.canShare({ files: [arquivo] })) return false;
         await navigator.share({ files: [arquivo], text: recado });
         return true;
@@ -718,7 +760,10 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
         folha.close();
 
         if (onde === 'whatsapp') {
-          window.open('https://wa.me/?text=' + encodeURIComponent(recado + ' ' + imagemEscolhida), '_blank');
+          // Sem bandeja do sistema so da para mandar texto. Vai o endereco do
+          // candidato, e nao o da imagem: o site mostra a arte na previa e
+          // ainda leva a pessoa para uma pagina onde ela pode se cadastrar.
+          window.open('https://wa.me/?text=' + encodeURIComponent(recado), '_blank');
           return;
         }
 
