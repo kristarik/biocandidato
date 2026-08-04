@@ -923,6 +923,7 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
       ${campoImagem('foto', 'Foto do candidato', tenant.photoUrl, 'removerFoto')}
       ${campoImagem('banner', 'Banner do topo', tenant.bannerUrl, 'removerBanner')}
     </div>
+    ${campoImagem('cidade', 'Fundo das propostas (foto da cidade)', tenant.proposalsBgUrl, 'removerCidade')}
     <div class="linha">
       ${campo('primaryColor', 'Cor principal', cor(tenant.primaryColor, '#1e40af'), 'color')}
       ${campo('secondaryColor', 'Cor secundária', cor(tenant.secondaryColor, '#f59e0b'), 'color')}

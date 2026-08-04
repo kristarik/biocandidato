@@ -38,6 +38,10 @@ model Tenant {
   /// Imagem larga do topo do WebApp, atras da foto circular.
   bannerUrl String? @map("banner_url") @db.VarChar(500)
 
+  /// Fundo do bloco de propostas — normalmente a cidade do candidato. Entra
+  /// escurecida atras dos cartoes, entao o texto continua legivel.
+  proposalsBgUrl String? @map("proposals_bg_url") @db.VarChar(500)
+
   primaryColor   String @default("#1e40af") @map("primary_color") @db.Char(7)
   secondaryColor String @default("#f59e0b") @map("secondary_color") @db.Char(7)
 

@@ -630,6 +630,7 @@ router.get('/conteudo', async (req, res, next) => {
 const camposDeImagem = upload.fields([
   { name: 'foto', maxCount: 1 },
   { name: 'banner', maxCount: 1 },
+  { name: 'cidade', maxCount: 1 },
 ]);
 
 router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
@@ -641,6 +642,7 @@ router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
     const antes = req.tenant;
     const fotoNova = await urlDoUpload(req, 'foto', 'foto');
     const bannerNovo = await urlDoUpload(req, 'banner', 'banner');
+    const cidadeNova = await urlDoUpload(req, 'cidade', 'cidade');
 
     const depois = {
       name: texto(b.name, 120) || antes.name,
@@ -653,6 +655,7 @@ router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
       // Sem arquivo novo, mantem o atual; a caixa "remover" limpa o campo.
       photoUrl: b.removerFoto === '1' ? null : fotoNova ?? antes.photoUrl,
       bannerUrl: b.removerBanner === '1' ? null : bannerNovo ?? antes.bannerUrl,
+      proposalsBgUrl: b.removerCidade === '1' ? null : cidadeNova ?? antes.proposalsBgUrl,
       primaryColor: hex(b.primaryColor, antes.primaryColor),
       secondaryColor: hex(b.secondaryColor, antes.secondaryColor),
     };

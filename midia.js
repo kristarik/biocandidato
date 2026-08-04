@@ -9,6 +9,7 @@ class ErroMidia extends Error {}
 const PERFIS = {
   foto: { largura: 800, altura: 800, rotulo: 'foto do candidato' },
   banner: { largura: 1600, altura: 700, rotulo: 'banner do topo' },
+  cidade: { largura: 1400, altura: 1000, rotulo: 'fundo das propostas' },
   divulgacao: { largura: 1600, altura: 900, rotulo: 'banner de divulgação' },
   icone: { largura: 240, altura: 240, rotulo: 'ícone do link' },
 };

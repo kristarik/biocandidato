@@ -52,7 +52,10 @@ async function main() {
   const banner =
     (await subirImagem(prisma, tenant.id, path.join(pasta, 'banner.jpg'), 'banner')) ||
     (await subirImagem(prisma, tenant.id, path.join(pasta, 'banner.png'), 'banner'));
-  if (!foto && !banner) console.log('  nenhuma imagem encontrada na pasta');
+  const cidade =
+    (await subirImagem(prisma, tenant.id, path.join(pasta, 'cidade.jpg'), 'cidade')) ||
+    (await subirImagem(prisma, tenant.id, path.join(pasta, 'cidade.png'), 'cidade'));
+  if (!foto && !banner && !cidade) console.log('  nenhuma imagem encontrada na pasta');
 
   await prisma.tenant.update({
     where: { id: tenant.id },
@@ -62,6 +65,7 @@ async function main() {
       ...(dados.bio ? { bio: dados.bio } : {}),
       ...(foto ? { photoUrl: foto } : {}),
       ...(banner ? { bannerUrl: banner } : {}),
+      ...(cidade ? { proposalsBgUrl: cidade } : {}),
       ...(dados.cor ? { primaryColor: dados.cor } : {}),
       ...(dados.cor2 ? { secondaryColor: dados.cor2 } : {}),
     },

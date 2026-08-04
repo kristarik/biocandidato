@@ -181,7 +181,11 @@ ${tagsDeIcone()}
   :root {
     --primaria: ${primaria};
     --secundaria: ${secundaria};
-    --escuro: #111114;
+    /* Botoes e cartoes vestem a cor do candidato, nao um preto neutro: a
+       identidade dele precisa aparecer no site inteiro, nao so no topo. O
+       escurecimento garante contraste do texto branco mesmo quando a cor
+       principal for clara. */
+    --escuro: color-mix(in srgb, ${primaria} 82%, #000);
     --superficie: #f4f4f6;
     --texto: #1c1c1e;
     --suave: #6b6b70;
@@ -270,6 +274,25 @@ ${tagsDeIcone()}
   .setas { margin: .35rem 0 0; text-align: center; color: var(--suave); letter-spacing: .5rem; }
 
   /* ---------- carrossel de propostas ---------- */
+  /* A cidade entra escurecida atras dos cartoes: sem o veu escuro, foto de rua
+     compete com o texto e nenhum dos dois se le. */
+  ${
+    t.proposalsBgUrl
+      ? `#propostas {
+    background:
+      linear-gradient(to bottom, rgba(8,12,20,.84), rgba(8,12,20,.92)),
+      url("${esc(t.proposalsBgUrl)}") center / cover no-repeat;
+    padding-bottom: 1.5rem; margin-bottom: .5rem;
+  }
+  #propostas h2 { color: #fff; }
+  #propostas .subtitulo, #propostas .setas { color: rgba(255,255,255,.7); }
+  #propostas .proposta {
+    background: rgba(255,255,255,.1);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  }
+  #propostas .proposta button { background: #fff; color: var(--texto); }`
+      : ''
+  }
   .carrossel {
     display: flex; gap: .9rem; margin-top: 1rem; padding: .25rem 1.25rem 1rem;
     overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
