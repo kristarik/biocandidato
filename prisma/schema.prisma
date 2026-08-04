@@ -126,9 +126,10 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  tenants   TenantUser[]
-  campaigns Campaign[]
-  auditLogs AuditLog[]
+  tenants    TenantUser[]
+  campaigns  Campaign[]
+  auditLogs  AuditLog[]
+  pushTokens PushToken[]
 
   @@index([role, active])
   @@map("users")
@@ -308,9 +309,14 @@ model Consent {
 }
 
 model PushToken {
-  id          String @id @default(uuid()) @db.Char(36)
-  tenantId    String @map("tenant_id") @db.Char(36)
-  supporterId String @map("supporter_id") @db.Char(36)
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  /// A inscricao pertence a um eleitor OU a quem opera o painel. A segunda
+  /// existe para o candidato receber o envio de teste no proprio aparelho
+  /// antes de disparar para a base.
+  supporterId String? @map("supporter_id") @db.Char(36)
+  userId      String? @map("user_id") @db.Char(36)
 
   /// Endpoint da inscricao no navegador. Nao e unico sozinho: todos os
   /// candidatos moram no mesmo dominio, entao um eleitor que apoia dois
@@ -328,12 +334,14 @@ model PushToken {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  supporter     Supporter      @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+  supporter     Supporter?     @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   notifications Notification[]
 
   @@unique([tenantId, token(length: 191)])
   @@index([tenantId, active])
   @@index([supporterId])
+  @@index([userId])
   @@map("push_tokens")
 }
 

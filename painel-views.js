@@ -669,7 +669,7 @@ const CANAIS = [
   },
 ];
 
-function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
+function telaTurbinar({ alcance, cidades, campanhas, chavePush, aparelhosDoOperador = 0 }) {
   const cartaoCanal = (c) => `<label class="canal">
     <input type="radio" name="channel" value="${c.chave}" ${c.chave === 'PUSH' ? 'checked' : ''}>
     <span class="canal-corpo">
@@ -717,9 +717,13 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
               <td>${esc(formatarData(c.createdAt))}</td>
               <td>${
                 podeEnviar
-                  ? `<form method="post" action="/painel/turbinar/${esc(c.id)}/enviar"
-                       onsubmit="return confirm('Enviar para ${c.totalRecipients} pessoas? Isso desconta do seu saldo e não pode ser desfeito.')">
-                       <button type="submit">Enviar agora</button></form>`
+                  ? `<div class="acoes" style="gap:.35rem">
+                       <form method="post" action="/painel/turbinar/${esc(c.id)}/teste">
+                         <button class="discreto" type="submit">Testar em mim</button></form>
+                       <form method="post" action="/painel/turbinar/${esc(c.id)}/enviar"
+                         onsubmit="return confirm('Enviar para ${c.totalRecipients} pessoas? Isso desconta do seu saldo e não pode ser desfeito.')">
+                         <button type="submit">Enviar agora</button></form>
+                     </div>`
                   : c.status === 'DRAFT'
                     ? '<span class="vazio">Aguarda provedor</span>'
                     : ''
@@ -752,6 +756,24 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
   WhatsApp, SMS e RCS ficam salvos como campanha, mas só saem depois que o
   provedor de mensagens for conectado.
 </p>
+
+<div class="cartao" id="avisos-do-aparelho">
+  <h2>Avisos neste aparelho</h2>
+  <p class="vazio" style="margin:-.5rem 0 .9rem">
+    Ative para receber os testes antes de disparar para a base. Erro de texto
+    só aparece na tela do celular — no formulário tudo parece certo.
+  </p>
+  <div class="acoes">
+    <button type="button" ${aparelhosDoOperador ? 'disabled' : ''}>
+      ${aparelhosDoOperador ? 'Avisos ativados' : 'Ativar avisos aqui'}
+    </button>
+    <span class="estado vazio">${
+      aparelhosDoOperador
+        ? `${aparelhosDoOperador} aparelho(s) recebendo seus testes`
+        : 'Nenhum aparelho ativado ainda'
+    }</span>
+  </div>
+</div>
 
 <div class="cartao">
   <h2>Para quem você consegue falar hoje</h2>
@@ -791,7 +813,68 @@ function telaTurbinar({ alcance, cidades, campanhas, aviso }) {
 <div class="cartao">
   <h2>Campanhas criadas</h2>
   ${historico}
-</div>`;
+</div>
+
+<script>
+(function () {
+  var CHAVE = ${JSON.stringify(chavePush || '')};
+  var caixa = document.getElementById('avisos-do-aparelho');
+  if (!caixa || !CHAVE) return;
+
+  var botao = caixa.querySelector('button');
+  var recado = caixa.querySelector('.estado');
+  var suportado = 'serviceWorker' in navigator && 'PushManager' in window;
+
+  if (!suportado) {
+    recado.textContent = 'Este navegador não recebe notificações. Use o celular.';
+    botao.disabled = true;
+    return;
+  }
+
+  function bytes(base64) {
+    var limpo = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    var bruto = atob(limpo);
+    var saida = new Uint8Array(bruto.length);
+    for (var i = 0; i < bruto.length; i++) saida[i] = bruto.charCodeAt(i);
+    return saida;
+  }
+
+  botao.addEventListener('click', async function () {
+    botao.disabled = true;
+    recado.textContent = 'Pedindo permissão...';
+    try {
+      var permissao = await Notification.requestPermission();
+      if (permissao !== 'granted') {
+        recado.textContent = 'Você bloqueou os avisos. Libere nas configurações do navegador.';
+        botao.disabled = false;
+        return;
+      }
+      var registro = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      var inscricao = await registro.pushManager.getSubscription();
+      if (!inscricao) {
+        inscricao = await registro.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: bytes(CHAVE)
+        });
+      }
+      var r = await fetch('/painel/push/inscrever', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inscricao: inscricao.toJSON() })
+      });
+      var dados = await r.json();
+      recado.textContent = r.ok
+        ? 'Pronto! Este aparelho vai receber os testes.'
+        : (dados.erro || 'Não foi possível ativar.');
+      botao.disabled = r.ok;
+    } catch (e) {
+      recado.textContent = 'Não foi possível ativar neste aparelho.';
+      botao.disabled = false;
+    }
+  });
+})();
+</script>`;
 }
 
 function telaSenha({ obrigatoria, erro, nome, minimo }) {

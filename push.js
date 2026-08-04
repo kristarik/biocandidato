@@ -24,7 +24,7 @@ function chavePublica() {
 
 /// Guarda a inscricao do navegador. A mesma pessoa pode reabrir a pagina e
 /// reinscrever com o mesmo endpoint, entao a gravacao e idempotente.
-async function inscrever({ tenantId, supporterId, inscricao, userAgent }) {
+async function inscrever({ tenantId, supporterId, userId, inscricao, userAgent }) {
   const endpoint = String(inscricao?.endpoint || '');
   const p256dh = inscricao?.keys?.p256dh;
   const auth = inscricao?.keys?.auth;
@@ -35,10 +35,10 @@ async function inscrever({ tenantId, supporterId, inscricao, userAgent }) {
     throw erro;
   }
 
-  // Toda inscricao pertence a um apoiador: o convite para ativar avisos so
-  // aparece depois do numero estar salvo, e uma inscricao sem dono nao teria
-  // como entrar no alcance de nenhuma campanha.
-  if (!supporterId) {
+  // Toda inscricao tem dono: um eleitor cadastrado ou quem opera o painel.
+  // Sem dono ela nao entraria no alcance de campanha nenhuma nem serviria
+  // para teste, entao seria lixo no banco.
+  if (!supporterId && !userId) {
     const erro = new Error('Faça o cadastro antes de ativar os avisos.');
     erro.status = 400;
     throw erro;
@@ -53,19 +53,20 @@ async function inscrever({ tenantId, supporterId, inscricao, userAgent }) {
     lastSeenAt: new Date(),
   };
 
+  const dono = supporterId ? { supporterId } : { userId };
+
   await prisma.$transaction([
     prisma.pushToken.upsert({
       where: { tenantId_token: { tenantId, token: endpoint } },
-      create: { tenantId, token: endpoint, supporterId, ...comum },
-      update: { supporterId, ...comum },
+      create: { tenantId, token: endpoint, ...dono, ...comum },
+      update: { ...dono, ...comum },
     }),
     // O apoiador so conta como alcancavel depois que o navegador devolveu uma
     // inscricao valida: a permissao pode ter sido concedida e a inscricao ter
     // falhado logo em seguida.
-    prisma.supporter.update({
-      where: { id: supporterId },
-      data: { pushActive: true },
-    }),
+    ...(supporterId
+      ? [prisma.supporter.update({ where: { id: supporterId }, data: { pushActive: true } })]
+      : []),
   ]);
 
   return { ok: true };

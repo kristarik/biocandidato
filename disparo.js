@@ -99,6 +99,53 @@ async function liberar(campanhaId, tenantId, userId) {
   });
 }
 
+/// Envia a campanha so para quem esta operando o painel, sem tocar na base
+/// nem no saldo. Existe porque erro de texto so aparece na tela do celular:
+/// no formulario tudo parece certo, e depois de disparar nao tem volta.
+async function enviarTeste(campanhaId, tenantId, userId) {
+  const prisma = getPrisma();
+
+  const campanha = await prisma.campaign.findFirst({
+    where: { id: campanhaId, tenantId },
+    include: { tenant: { select: { slug: true, name: true } } },
+  });
+  if (!campanha) throw new ErroDisparo('Campanha não encontrada.');
+  if (campanha.channel !== 'PUSH') {
+    throw new ErroDisparo('Só o push pode ser testado por enquanto.');
+  }
+
+  const inscricoes = await prisma.pushToken.findMany({
+    where: { tenantId, active: true, userId },
+  });
+
+  if (!inscricoes.length) {
+    throw new ErroDisparo(
+      'Ative os avisos neste aparelho antes de testar. O botão fica no topo desta página.'
+    );
+  }
+
+  const carga = {
+    titulo: campanha.title || campanha.tenant.name,
+    corpo: campanha.message,
+    url: `/${campanha.tenant.slug}`,
+    campanha: `teste-${campanha.id}`,
+  };
+
+  const saidas = await Promise.all(inscricoes.map((i) => push.enviarPara(i, carga)));
+  const entregues = saidas.filter((s) => s.ok).length;
+
+  if (!entregues) {
+    // A mensagem do servico de push vem crua, com quebras de linha.
+    const motivo = String(saidas[0]?.erro || 'falha no envio').replace(/\s+/g, ' ').trim();
+    throw new ErroDisparo(
+      saidas[0]?.permanente
+        ? `A inscrição deste aparelho expirou. Toque em "Ativar avisos aqui" de novo. (${motivo})`
+        : `Não foi possível entregar o teste: ${motivo}`
+    );
+  }
+  return { entregues, aparelhos: inscricoes.length };
+}
+
 // ---------------------------------------------------------------------------
 // Envio
 // ---------------------------------------------------------------------------
@@ -267,4 +314,6 @@ function iniciarLaco() {
   console.log(`[disparo] laco ativo, verificando a cada ${INTERVALO_MS / 1000}s`);
 }
 
-module.exports = { liberar, rodada, tick, iniciarLaco, ErroDisparo, TAMANHO_DO_BLOCO };
+module.exports = {
+  liberar, enviarTeste, rodada, tick, iniciarLaco, ErroDisparo, TAMANHO_DO_BLOCO,
+};

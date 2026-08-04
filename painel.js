@@ -3,6 +3,7 @@ const multer = require('multer');
 const { getPrisma } = require('./prisma-client');
 const midia = require('./midia');
 const disparo = require('./disparo');
+const push = require('./push');
 const {
   autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, MINIMO_SENHA,
 } = require('./auth');
@@ -480,11 +481,11 @@ async function alcancePorCanal(prisma, tenantId, extra = {}) {
   return { PUSH: push, WHATSAPP: telefone, SMS: telefone, RCS: telefone };
 }
 
-async function montarTurbinar(req, res, aviso) {
+async function montarTurbinar(req, res) {
   const prisma = getPrisma();
   const tenantId = req.tenant.id;
 
-  const [alcance, agrupadoCidades, campanhas] = await Promise.all([
+  const [alcance, agrupadoCidades, campanhas, aparelhosDoOperador] = await Promise.all([
     alcancePorCanal(prisma, tenantId),
     prisma.supporter.groupBy({
       by: ['city'],
@@ -492,6 +493,7 @@ async function montarTurbinar(req, res, aviso) {
       _count: true,
     }),
     prisma.campaign.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 15 }),
+    prisma.pushToken.count({ where: { tenantId, userId: req.sessao.userId, active: true } }),
   ]);
 
   res.type('html').send(
@@ -504,7 +506,8 @@ async function montarTurbinar(req, res, aviso) {
         alcance: { ...alcance, saldo: req.tenant.creditBalance },
         cidades: agrupadoCidades.map((c) => c.city).filter(Boolean).sort(),
         campanhas,
-        aviso,
+        chavePush: push.chavePublica(),
+        aparelhosDoOperador,
       }),
     })
   );
@@ -546,13 +549,12 @@ router.post('/turbinar', async (req, res, next) => {
       },
     });
 
-    if (!totalRecipients) {
-      return voltar(res, '/painel/turbinar', 'Nenhum apoiador se encaixa nesses filtros.', 'erro');
-    }
-
-    // Barrar aqui, e nao no disparo: montar uma campanha que nunca poderia
-    // sair daria ao candidato a impressao de que a mensagem esta a caminho.
-    if (totalRecipients > req.tenant.creditBalance) {
+    // Publico vazio nao impede criar: rascunho serve para escrever e testar em
+    // si mesmo antes de ter base. O envio e que exige gente do outro lado.
+    // Saldo insuficiente, ao contrario, e barrado agora — montar uma campanha
+    // que nunca poderia sair daria a impressao de que a mensagem esta a
+    // caminho.
+    if (totalRecipients && totalRecipients > req.tenant.creditBalance) {
       return voltar(
         res,
         '/painel/turbinar',
@@ -579,11 +581,49 @@ router.post('/turbinar', async (req, res, next) => {
     voltar(
       res,
       '/painel/turbinar',
-      channel === 'PUSH'
-        ? `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. Clique em "Enviar agora" para disparar.`
-        : `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. O envio por ${channel} aguarda a conexão do provedor.`
+      !totalRecipients
+        ? 'Campanha salva como rascunho. Ninguém tem esse canal ativo ainda, mas você já pode testar em você mesmo.'
+        : channel === 'PUSH'
+          ? `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. Teste em você e depois clique em "Enviar agora".`
+          : `Campanha criada para ${totalRecipients.toLocaleString('pt-BR')} pessoas. O envio por ${channel} aguarda a conexão do provedor.`
     );
   } catch (err) {
+    next(err);
+  }
+});
+
+/// Inscreve o aparelho de quem esta no painel. Serve para o envio de teste e,
+/// mais adiante, para avisar o candidato do que acontece na base dele.
+router.post('/push/inscrever', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    await push.inscrever({
+      tenantId: req.tenant.id,
+      userId: req.sessao.userId,
+      inscricao: req.body?.inscricao,
+      userAgent: req.get('user-agent'),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(err.status || 500).json({ erro: err.message });
+  }
+});
+
+router.post('/turbinar/:id/teste', async (req, res, next) => {
+  try {
+    const { entregues } = await disparo.enviarTeste(
+      req.params.id,
+      req.tenant.id,
+      req.sessao.userId
+    );
+    voltar(
+      res,
+      '/painel/turbinar',
+      `Teste enviado para ${entregues} aparelho(s). Não descontou do seu saldo.`
+    );
+  } catch (err) {
+    if (err instanceof disparo.ErroDisparo) {
+      return voltar(res, '/painel/turbinar', err.message, 'erro');
+    }
     next(err);
   }
 });
