@@ -160,6 +160,29 @@ function render(t, { chavePush, proporcaoCapa } = {}) {
       </section>`
       : '';
 
+  const compartilhe = t.photos.length
+    ? `<section id="compartilhe">
+        <h2>COMPARTILHE</h2>
+        <p class="subtitulo">ESCOLHA UMA ARTE E POSTE NAS SUAS REDES</p>
+        <p class="setas" aria-hidden="true">← →</p>
+        <div class="carrossel pecas">
+          ${t.photos
+            .map(
+              (p, i) => `<figure class="peca" data-peca="${i}">
+                <img src="${esc(p.url)}" alt="${esc(p.title || `Arte de campanha ${i + 1}`)}" loading="lazy">
+                <button type="button" class="compartilhar" data-imagem="${esc(p.url)}">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                    <path d="M18 16a3 3 0 0 0-1.9.7L10 13.2a3 3 0 0 0 0-2.4l6.1-3.5A3 3 0 1 0 15 5c0 .2 0 .4.1.6L9 9.1a3 3 0 1 0 0 5.8l6.1 3.5c0 .2-.1.4-.1.6a3 3 0 1 0 3-3Z"/>
+                  </svg>
+                  COMPARTILHAR
+                </button>
+              </figure>`
+            )
+            .join('')}
+        </div>
+      </section>`
+    : '';
+
   const redes = t.socialLinks.length
     ? `<section id="redes">
         <h2>ME ACOMPANHE NAS REDES</h2>
@@ -396,6 +419,62 @@ ${tagsDeIcone()}
     letter-spacing: .08em; cursor: pointer;
   }
 
+  /* ---------- compartilhe ---------- */
+  .pecas { align-items: flex-start; }
+  .peca {
+    flex: 0 0 66%; max-width: 260px; scroll-snap-align: center; margin: 0;
+    position: relative; border-radius: 14px; overflow: hidden;
+    background: var(--superficie); box-shadow: 0 6px 20px -10px rgba(0,0,0,.35);
+  }
+  .peca img { width: 100%; display: block; }
+  /* O botao mora sobre a arte porque e dela que ele trata; o degrade garante
+     que ele se leia mesmo sobre peca clara. */
+  .peca .compartilhar {
+    position: absolute; left: .5rem; right: .5rem; bottom: .5rem;
+    display: flex; align-items: center; justify-content: center; gap: .4rem;
+    padding: .7rem; border: 0; border-radius: 9px; cursor: pointer;
+    background: var(--escuro); color: #fff; font-family: inherit;
+    font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
+  }
+  .peca .compartilhar:active { transform: scale(.97); }
+
+  /* folha de opcoes */
+  dialog.compartilhar-opcoes {
+    width: min(94vw, 22rem); padding: 0; border: 0; border-radius: 16px;
+    background: var(--fundo); color: var(--texto);
+  }
+  dialog.compartilhar-opcoes::backdrop { background: rgba(0,0,0,.55); }
+  .opcoes-titulo {
+    padding: 1.2rem 1.3rem .3rem; font-weight: 700; font-size: 1rem; text-align: center;
+  }
+  .opcoes-ajuda {
+    padding: 0 1.3rem; font-size: .8rem; color: var(--suave); text-align: center; margin: 0 0 1rem;
+  }
+  .opcoes { display: grid; gap: .5rem; padding: 0 1.1rem 1.1rem; }
+  .opcoes button {
+    display: flex; align-items: center; gap: .75rem; width: 100%;
+    padding: .85rem 1rem; border: 1px solid var(--borda); border-radius: 11px;
+    background: var(--fundo); color: var(--texto); font: inherit; font-weight: 600;
+    font-size: .92rem; cursor: pointer; text-align: left;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 180ms ease;
+  }
+  .opcoes button:active { transform: scale(.98); }
+  .opcoes button i {
+    width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    flex: 0 0 auto; color: #fff;
+  }
+  .opcoes .instagram i { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); }
+  .opcoes .whatsapp i { background: #25d366; }
+  .opcoes .messenger i { background: linear-gradient(45deg, #0695ff, #a334fa); }
+  .opcoes button small { display: block; font-weight: 500; font-size: .76rem; color: var(--suave); }
+  .opcoes .fechar {
+    justify-content: center; border: 0; background: none; color: var(--suave); font-weight: 500;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .opcoes button:hover { background: var(--superficie); }
+  }
+
   /* ---------- banners ---------- */
   .banner-divulgacao { margin: 2rem 1.25rem 0; border-radius: 12px; overflow: hidden; }
   .banner-divulgacao img { width: 100%; }
@@ -536,6 +615,7 @@ ${propostas}
 ${curriculo}
 ${blocoBanner(bannerPor('MEIO'))}
 ${blocoApoio(1, true)}
+${compartilhe}
 ${redes}
 ${links}
 ${blocoBanner(bannerPor('RODAPE'))}
@@ -546,6 +626,26 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 <dialog id="lightbox">
   <div class="conteudo"><h3></h3><p></p></div>
   <button type="button" class="fechar">FECHAR</button>
+</dialog>
+
+<dialog class="compartilhar-opcoes" id="opcoes-compartilhar">
+  <p class="opcoes-titulo">Compartilhar</p>
+  <p class="opcoes-ajuda">Escolha onde você quer postar esta arte.</p>
+  <div class="opcoes">
+    <button type="button" class="instagram" data-onde="instagram">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.2 2.2.4.6.2 1 .5 1.4 1 .5.4.8.8 1 1.4.2.4.3 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.2 1.8-.4 2.2-.2.6-.5 1-1 1.4-.4.5-.8.8-1.4 1-.4.2-1 .3-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.2-2.2-.4-.6-.2-1-.5-1.4-1-.5-.4-.8-.8-1-1.4-.2-.4-.3-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.2-1.8.4-2.2.2-.6.5-1 1-1.4.4-.5.8-.8 1.4-1 .4-.2 1-.3 2.2-.4 1.3-.1 1.7-.1 4.9-.1Zm0 3.4a6.4 6.4 0 1 0 0 12.8 6.4 6.4 0 0 0 0-12.8Zm0 10.6a4.2 4.2 0 1 1 0-8.4 4.2 4.2 0 0 1 0 8.4Zm6.6-10.9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></svg></i>
+      <span>Instagram<small class="dica-instagram">Salva a arte para você postar</small></span>
+    </button>
+    <button type="button" class="whatsapp" data-onde="whatsapp">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.7 15l-1.2 4.3 4.4-1.2A10 10 0 1 0 12 2Zm5.3 14c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1a12 12 0 0 1-5.6-4.8c-.4-.7-.9-1.6-.9-2.5 0-.9.5-1.4.7-1.6.2-.2.4-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.8c0 .2 0 .4-.1.5l-.4.5c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2 1.3 2.3 1.4.2.1.4.1.6-.1l.7-.9c.2-.2.3-.2.5-.1l1.7.8c.2.1.4.2.4.3v1Z"/></svg></i>
+      <span>WhatsApp<small>Manda para seus contatos</small></span>
+    </button>
+    <button type="button" class="messenger" data-onde="messenger">
+      <i><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M12 2C6.3 2 2 6.2 2 11.7c0 3.2 1.4 6 3.7 7.8V23l3.4-1.9c.9.3 1.9.4 2.9.4 5.7 0 10-4.2 10-9.7S17.7 2 12 2Zm1 13.1-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7-5.4 5.8Z"/></svg></i>
+      <span>Messenger<small>Envia por mensagem</small></span>
+    </button>
+    <button type="button" class="fechar">Cancelar</button>
+  </div>
 </dialog>
 
 <nav class="barra">
@@ -563,6 +663,85 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   var SLUG = ${JSON.stringify(t.slug)};
   var PROPOSTAS = ${JSON.stringify(conteudoPropostas)};
   var CHAVE_PUSH = ${JSON.stringify(chavePush || '')};
+  var TEXTO_COMPARTILHAR = ${JSON.stringify(
+    `Esse é meu candidato! ${t.name}${t.number ? ` ${t.number}` : ''}.`
+  )};
+
+  // ----- compartilhar peca -----
+  var folha = document.getElementById('opcoes-compartilhar');
+  var imagemEscolhida = '';
+
+  if (folha) {
+    var enderecoDoSite = location.origin + '/' + SLUG;
+    var recado = TEXTO_COMPARTILHAR + ' ' + enderecoDoSite;
+
+    document.querySelectorAll('.peca .compartilhar').forEach(function (botao) {
+      botao.addEventListener('click', function () {
+        imagemEscolhida = new URL(botao.dataset.imagem, location.origin).href;
+        folha.showModal();
+      });
+    });
+
+    // Baixa a arte para o aparelho. E o unico caminho ate o Instagram, que nao
+    // aceita publicacao por link: a pessoa salva e sobe no app.
+    async function baixarArte() {
+      var resposta = await fetch(imagemEscolhida);
+      var arquivo = await resposta.blob();
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(arquivo);
+      link.download = SLUG + '.webp';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 4000);
+    }
+
+    // Quando o aparelho sabe compartilhar arquivo, a bandeja do sistema e
+    // melhor que qualquer link: a arte vai junto, nao so o endereco.
+    async function compartilharArquivo() {
+      if (!navigator.canShare) return false;
+      try {
+        var resposta = await fetch(imagemEscolhida);
+        var blob = await resposta.blob();
+        var arquivo = new File([blob], SLUG + '.webp', { type: blob.type });
+        if (!navigator.canShare({ files: [arquivo] })) return false;
+        await navigator.share({ files: [arquivo], text: recado });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    folha.querySelectorAll('[data-onde]').forEach(function (opcao) {
+      opcao.addEventListener('click', async function () {
+        var onde = opcao.dataset.onde;
+        folha.close();
+
+        if (onde === 'whatsapp') {
+          window.open('https://wa.me/?text=' + encodeURIComponent(recado + ' ' + imagemEscolhida), '_blank');
+          return;
+        }
+
+        if (onde === 'messenger') {
+          // O aplicativo aceita link; no computador nao ha caminho direto,
+          // entao a bandeja do sistema ou o download resolvem.
+          if (await compartilharArquivo()) return;
+          window.location.href = 'fb-messenger://share/?link=' + encodeURIComponent(enderecoDoSite);
+          return;
+        }
+
+        if (!(await compartilharArquivo())) await baixarArte();
+      });
+    });
+
+    folha.querySelector('.fechar').addEventListener('click', function () { folha.close(); });
+
+    // Sem bandeja do sistema, o Instagram so pode receber a arte baixada.
+    if (!navigator.canShare) {
+      var dica = folha.querySelector('.dica-instagram');
+      if (dica) dica.textContent = 'Baixa a arte para você postar';
+    }
+  }
 
   // ----- arrastar com o mouse -----
   // No toque a rolagem nativa ja funciona e e melhor que qualquer emulacao,
@@ -823,6 +1002,7 @@ async function buscarPorSlug(slug) {
     include: {
       proposals: { where: { published: true }, orderBy: { position: 'asc' }, take: 20 },
       experiences: { where: { published: true }, orderBy: { position: 'asc' }, take: 15 },
+      photos: { where: { published: true }, orderBy: { position: 'asc' }, take: 12 },
       banners: { where: { published: true }, orderBy: { position: 'asc' }, take: 6 },
       socialLinks: { where: { published: true }, orderBy: { position: 'asc' }, take: 10 },
       links: { where: { published: true }, orderBy: { position: 'asc' }, take: 12 },

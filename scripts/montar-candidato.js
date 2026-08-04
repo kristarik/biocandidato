@@ -107,6 +107,28 @@ async function main() {
     console.log(`\nPropostas: ${dados.propostas.length}`);
   }
 
+  // Galeria do "Compartilhe": a pasta inteira vira artes, em ordem de nome.
+  const pastaGaleria = path.join(pasta, 'galeria');
+  if (fs.existsSync(pastaGaleria)) {
+    const artes = fs.readdirSync(pastaGaleria).filter((n) => EXTENSOES.test(n)).sort();
+    if (artes.length) {
+      await prisma.photo.deleteMany({ where: { tenantId: tenant.id } });
+      let posicao = 0;
+      for (const nome of artes) {
+        const { url } = await midia.salvar({
+          tenantId: tenant.id,
+          tipo: 'peca',
+          buffer: fs.readFileSync(path.join(pastaGaleria, nome)),
+        });
+        posicao += 1;
+        await prisma.photo.create({
+          data: { tenantId: tenant.id, url, album: 'compartilhe', position: posicao },
+        });
+      }
+      console.log(`Compartilhe: ${artes.length} artes`);
+    }
+  }
+
   if (dados.experiencias?.length) {
     await prisma.experience.deleteMany({ where: { tenantId: tenant.id } });
     await prisma.experience.createMany({

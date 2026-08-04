@@ -110,6 +110,15 @@ const ESTILO = `
     width: 100%; padding: .5rem; border: 1px dashed var(--borda); border-radius: 8px;
     background: var(--branco); font: inherit; font-size: .85rem;
   }
+  .grade-pecas {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .7rem;
+  }
+  .peca-item { display: grid; gap: .35rem; }
+  .peca-item img {
+    width: 100%; aspect-ratio: 4/5; object-fit: cover; border-radius: 8px;
+    border: 1px solid var(--borda); background: #f1f3f7;
+  }
+  .peca-item button { width: 100%; text-align: center; }
   .previa { display: flex; align-items: center; gap: .8rem; margin-bottom: .55rem; }
   .previa img {
     width: 76px; height: 56px; object-fit: contain; border-radius: 8px;
@@ -819,7 +828,7 @@ ${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
 </div>`;
 }
 
-function telaConteudo({ tenant, propostas, experiencias = [], redes, links, banners }) {
+function telaConteudo({ tenant, propostas, experiencias = [], pecas = [], redes, links, banners }) {
   const campo = (nome, rotulo, valor, tipo = 'text', extra = '') =>
     `<label class="campo"><span>${rotulo}</span>
       <input type="${tipo}" name="${nome}" value="${esc(valor ?? '')}" ${extra}></label>`;
@@ -944,6 +953,37 @@ function telaConteudo({ tenant, propostas, experiencias = [], redes, links, bann
     <label class="campo"><span>Texto completo (abre ao clicar em Acessar agora)</span>
       <textarea name="content" maxlength="8000"></textarea></label>
     <button type="submit">Adicionar proposta</button>
+  </form>
+</div>
+
+<div class="cartao">
+  <h2>Compartilhe</h2>
+  <p class="vazio" style="margin:-.5rem 0 1rem">
+    Artes que o apoiador posta nas redes dele. Formato em pé, tipo story,
+    funciona melhor.
+  </p>
+  ${
+    pecas.length
+      ? `<div class="grade-pecas">${pecas
+          .map(
+            (p) => `<div class="peca-item">
+              <img src="${esc(p.url)}" alt="" loading="lazy">
+              <form method="post" action="/painel/conteudo/peca/apagar">
+                <input type="hidden" name="id" value="${esc(p.id)}">
+                <button class="perigo" type="submit">Remover</button>
+              </form>
+            </div>`
+          )
+          .join('')}</div>`
+      : '<p class="vazio">Nenhuma arte cadastrada.</p>'
+  }
+  <form method="post" action="/painel/conteudo/peca" enctype="multipart/form-data" style="margin-top:1rem">
+    <div class="campo">
+      <span>Adicionar artes</span>
+      <input type="file" name="pecas" accept="image/jpeg,image/png,image/gif,image/webp" multiple required>
+      <small>Pode escolher várias de uma vez, até 12.</small>
+    </div>
+    <button type="submit">Enviar artes</button>
   </form>
 </div>
 

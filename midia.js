@@ -13,6 +13,9 @@ const PERFIS = {
   // e ele chegaria borrado no celular.
   banner: { largura: 1600, altura: 1600, rotulo: 'capa do topo' },
   cidade: { largura: 1400, altura: 1000, rotulo: 'fundo das propostas' },
+  // Peca de compartilhamento sai do site para o feed de outra pessoa, entao
+  // precisa aguentar a tela cheia de um celular sem parecer ampliada.
+  peca: { largura: 1440, altura: 1800, rotulo: 'peça para compartilhar' },
   divulgacao: { largura: 1600, altura: 900, rotulo: 'banner de divulgação' },
   icone: { largura: 240, altura: 240, rotulo: 'ícone do link' },
 };

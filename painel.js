@@ -16,7 +16,14 @@ router.use(express.urlencoded({ extended: false, limit: '64kb' }));
 // deploy de qualquer forma.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: midia.ENTRADA_MAXIMA, files: 2 },
+  limits: { fileSize: midia.ENTRADA_MAXIMA, files: 3 },
+});
+
+// A galeria recebe um lote de artes de uma vez: a campanha manda o pacote do
+// designer inteiro, nao uma peca por dia.
+const uploadEmLote = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: midia.ENTRADA_MAXIMA, files: 12 },
 });
 
 /// Recebe o arquivo de um campo, grava e devolve a URL publica. Devolve
@@ -606,9 +613,10 @@ router.get('/conteudo', async (req, res, next) => {
     const prisma = getPrisma();
     const tenantId = req.tenant.id;
 
-    const [propostas, experiencias, redes, links, banners] = await Promise.all([
+    const [propostas, experiencias, pecas, redes, links, banners] = await Promise.all([
       prisma.proposal.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.experience.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
+      prisma.photo.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.socialLink.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.importantLink.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.banner.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
@@ -620,7 +628,9 @@ router.get('/conteudo', async (req, res, next) => {
         tenant: req.tenant,
         aba: 'conteudo',
         recado: recadoDaUrl(req),
-        corpo: vistas.telaConteudo({ tenant: req.tenant, propostas, experiencias, redes, links, banners }),
+        corpo: vistas.telaConteudo({
+          tenant: req.tenant, propostas, experiencias, pecas, redes, links, banners,
+        }),
       })
     );
   } catch (err) {
@@ -736,6 +746,64 @@ const REDES_ACEITAS = ['whatsapp', 'instagram', 'tiktok', 'youtube', 'facebook',
 recurso('proposta', 'proposal', (b) => {
   const title = texto(b.title, 200);
   return title ? { title, description: texto(b.description, 300), content: texto(b.content, 8000) } : null;
+});
+
+router.post(
+  '/conteudo/peca',
+  uploadEmLote.array('pecas', 12),
+  async (req, res, next) => {
+    try {
+      const arquivos = (req.files || []).filter((a) => a?.buffer?.length);
+      if (!arquivos.length) {
+        return voltar(res, '/painel/conteudo', 'Escolha ao menos uma arte.', 'erro');
+      }
+
+      const prisma = getPrisma();
+      const ultima = await prisma.photo.findFirst({
+        where: { tenantId: req.tenant.id },
+        orderBy: { position: 'desc' },
+        select: { position: true },
+      });
+
+      let posicao = ultima?.position ?? 0;
+      for (const arquivo of arquivos) {
+        const { url } = await midia.salvar({
+          tenantId: req.tenant.id,
+          tipo: 'peca',
+          buffer: arquivo.buffer,
+          createdById: req.sessao.userId,
+        });
+        posicao += 1;
+        await prisma.photo.create({
+          data: { tenantId: req.tenant.id, url, album: 'compartilhe', position: posicao },
+        });
+      }
+
+      voltar(
+        res,
+        '/painel/conteudo',
+        `${arquivos.length} arte(s) adicionada(s) ao Compartilhe.`
+      );
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post('/conteudo/peca/apagar', async (req, res, next) => {
+  try {
+    const removidos = await getPrisma().photo.deleteMany({
+      where: { id: String(req.body.id || ''), tenantId: req.tenant.id },
+    });
+    voltar(
+      res,
+      '/painel/conteudo',
+      removidos.count ? 'Arte removida.' : 'Arte não encontrada.',
+      removidos.count ? 'ok' : 'erro'
+    );
+  } catch (err) {
+    next(err);
+  }
 });
 
 recurso('experiencia', 'experience', (b) => {
