@@ -6,7 +6,7 @@ const painel = require('./painel');
 const master = require('./master');
 const landing = require('./landing');
 const { inspect, diagnostico } = require('./db');
-const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
+const { buscarPorSlug, render, paginaNaoEncontrada, manifesto, proporcaoDaCapa } = require('./webapp');
 const { iniciar, completar, ErroCadastro } = require('./cadastro');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
@@ -207,7 +207,12 @@ app.get('/:slug', async (req, res, next) => {
     if (!tenant) {
       return res.status(404).type('html').send(paginaNaoEncontrada());
     }
-    res.type('html').send(render(tenant, { chavePush: push.chavePublica() }));
+    res.type('html').send(
+      render(tenant, {
+        chavePush: push.chavePublica(),
+        proporcaoCapa: await proporcaoDaCapa(tenant.bannerUrl),
+      })
+    );
   } catch (err) {
     next(err);
   }

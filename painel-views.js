@@ -919,6 +919,8 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
     ${campo('slogan', 'Slogan', tenant.slogan, 'text', 'maxlength="200"')}
     <label class="campo"><span>Resumo (aparece abaixo do nome)</span>
       <textarea name="bio" maxlength="1200">${esc(tenant.bio || '')}</textarea></label>
+    <label class="campo"><span>Meu currículo (abre ao tocar, no topo do site)</span>
+      <textarea name="curriculum" maxlength="4000" style="min-height:140px">${esc(tenant.curriculum || '')}</textarea></label>
     <div class="linha">
       ${campoImagem('foto', 'Foto do candidato', tenant.photoUrl, 'removerFoto')}
       ${campoImagem('banner', 'Banner do topo', tenant.bannerUrl, 'removerBanner')}

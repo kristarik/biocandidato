@@ -652,6 +652,7 @@ router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
       state: texto(b.state, 2)?.toUpperCase() || null,
       slogan: texto(b.slogan, 200),
       bio: texto(b.bio, 1200),
+      curriculum: texto(b.curriculum, 4000),
       // Sem arquivo novo, mantem o atual; a caixa "remover" limpa o campo.
       photoUrl: b.removerFoto === '1' ? null : fotoNova ?? antes.photoUrl,
       bannerUrl: b.removerBanner === '1' ? null : bannerNovo ?? antes.bannerUrl,

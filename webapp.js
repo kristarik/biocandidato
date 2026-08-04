@@ -92,8 +92,13 @@ function blocoApoio(indice, ancora) {
 </section>`;
 }
 
-function render(t, { chavePush } = {}) {
+function render(t, { chavePush, proporcaoCapa } = {}) {
   const primaria = cor(t.primaryColor, '#1e40af');
+
+  /// Cartaz: imagem em pe ou quase quadrada. A capa passa a seguir a
+  /// proporcao da propria arte em vez da faixa fixa, para a peca aparecer
+  /// inteira em vez de ser cortada numa tira.
+  const eCartaz = Boolean(t.bannerUrl && proporcaoCapa && proporcaoCapa < 1.3);
   const secundaria = cor(t.secondaryColor, '#f59e0b');
   const local = [t.city, t.state].filter(Boolean).join(' - ');
   const bannerPor = (slot) => t.banners.find((b) => b.slot === slot);
@@ -228,12 +233,17 @@ ${tagsDeIcone()}
   /* Com banner cadastrado, a imagem manda. Sem banner, a faixa usa a cor do
      candidato em vez de preto: identidade visual em vez de tarja vazia. */
   .topo .capa {
-    height: 190px;
+    ${
+      eCartaz
+        ? `aspect-ratio: ${proporcaoCapa.toFixed(4)};
+    background: url("${esc(t.bannerUrl)}") center / cover no-repeat, var(--primaria);`
+        : `height: 190px;
     background: ${
       t.bannerUrl
         ? `url("${esc(t.bannerUrl)}") center / cover no-repeat, var(--primaria)`
         : `linear-gradient(160deg, var(--primaria), color-mix(in srgb, var(--primaria) 62%, #000))`
-    };
+    };`
+    }
   }
   .topo .retrato {
     width: 148px; height: 148px; border-radius: 50%; object-fit: cover;
@@ -259,6 +269,27 @@ ${tagsDeIcone()}
   .resumo {
     max-width: 34rem; margin: .9rem auto 0; padding: 0 1.5rem;
     font-size: .93rem; color: var(--suave);
+  }
+
+  /* ---------- meu curriculo ---------- */
+  .curriculo {
+    max-width: 34rem; margin: 1rem auto 0; text-align: left;
+    border: 1px solid var(--borda); border-radius: 12px; overflow: hidden;
+  }
+  .curriculo summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: .85rem 1.1rem; cursor: pointer; list-style: none;
+    font-size: .88rem; font-weight: 650; color: var(--primaria);
+  }
+  .curriculo summary::-webkit-details-marker { display: none; }
+  .curriculo summary svg { flex: 0 0 auto; transition: transform 220ms cubic-bezier(.23,1,.32,1); }
+  .curriculo[open] summary svg { transform: rotate(180deg); }
+  .curriculo-corpo { padding: 0 1.1rem 1.1rem; }
+  .curriculo-corpo p {
+    margin: 0; font-size: .89rem; color: var(--suave); white-space: pre-line;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .curriculo summary:hover { background: var(--superficie); }
   }
 
   /* ---------- secoes ---------- */
@@ -451,6 +482,18 @@ ${tagsDeIcone()}
     ${t.party || local ? `<p class="meta">${esc([t.party, local].filter(Boolean).join(' · '))}</p>` : ''}
   </div>
   ${t.bio || t.slogan ? `<p class="resumo">${esc(t.bio || t.slogan)}</p>` : ''}
+  ${
+    t.curriculum
+      ? `<details class="curriculo">
+          <summary>
+            <span>Meu currículo</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9.5 12 15l6-5.5"/></svg>
+          </summary>
+          <div class="curriculo-corpo"><p>${esc(t.curriculum)}</p></div>
+        </details>`
+      : ''
+  }
 </div>
 
 ${propostas}
@@ -722,6 +765,20 @@ function paginaNaoEncontrada() {
 }
 
 /// Carrega o tenant pelo slug com todo o conteudo publicado do WebApp.
+/// Proporcao da capa, lida da imagem guardada. Decide se o topo e uma faixa
+/// larga ou um cartaz em pe — e as duas coisas se montam de formas diferentes.
+async function proporcaoDaCapa(bannerUrl) {
+  const id = /^\/midia\/([0-9a-f-]{36})$/i.exec(String(bannerUrl || ''))?.[1];
+  if (!id) return null;
+
+  const arquivo = await getPrisma().mediaFile.findUnique({
+    where: { id },
+    select: { width: true, height: true },
+  });
+  if (!arquivo?.width || !arquivo?.height) return null;
+  return arquivo.width / arquivo.height;
+}
+
 async function buscarPorSlug(slug) {
   const prisma = getPrisma();
   return prisma.tenant.findFirst({
@@ -758,4 +815,4 @@ function manifesto(t) {
   };
 }
 
-module.exports = { buscarPorSlug, render, paginaNaoEncontrada, manifesto };
+module.exports = { buscarPorSlug, render, paginaNaoEncontrada, manifesto, proporcaoDaCapa };

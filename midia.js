@@ -8,7 +8,10 @@ class ErroMidia extends Error {}
 /// eleitor custa o carregamento da pagina inteira.
 const PERFIS = {
   foto: { largura: 800, altura: 800, rotulo: 'foto do candidato' },
-  banner: { largura: 1600, altura: 700, rotulo: 'banner do topo' },
+  // Altura folgada porque a capa tanto pode ser uma faixa larga quanto um
+  // cartaz em pe: limitar a 700 reduziria um cartaz de 1568 a menos da metade
+  // e ele chegaria borrado no celular.
+  banner: { largura: 1600, altura: 1600, rotulo: 'capa do topo' },
   cidade: { largura: 1400, altura: 1000, rotulo: 'fundo das propostas' },
   divulgacao: { largura: 1600, altura: 900, rotulo: 'banner de divulgação' },
   icone: { largura: 240, altura: 240, rotulo: 'ícone do link' },

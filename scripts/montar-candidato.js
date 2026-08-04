@@ -16,14 +16,21 @@ const EXTENSOES = /\.(jpe?g|png|webp|gif)$/i;
 /// Acha a imagem pelo pedaco do nome, nao pelo nome exato: o arquivo chega do
 /// cliente com o nome que ele salvou — "riodejaneiro-cidade.jpg" tambem e a
 /// cidade.
-function acharImagem(pasta, palavra) {
+function acharImagem(pasta, palavras) {
   if (!fs.existsSync(pasta)) return null;
-  const arquivos = fs
+  const alvos = [].concat(palavras);
+
+  const candidatos = fs
     .readdirSync(pasta)
-    .filter((n) => EXTENSOES.test(n) && n.toLowerCase().includes(palavra))
-    // "banner-original" nao deve ganhar de "banner": o mais curto e o oficial.
-    .sort((a, b) => a.length - b.length);
-  return arquivos[0] ? path.join(pasta, arquivos[0]) : null;
+    .filter((n) => EXTENSOES.test(n))
+    .map((n) => ({ nome: n, posto: alvos.findIndex((p) => n.toLowerCase().includes(p)) }))
+    .filter((c) => c.posto >= 0)
+    // A ordem das palavras manda: "capa" ganha de "banner" mesmo com nome
+    // maior. Entre nomes da mesma palavra, o mais curto e o oficial, para
+    // "banner-original" nao passar na frente de "banner".
+    .sort((a, b) => a.posto - b.posto || a.nome.length - b.nome.length);
+
+  return candidatos[0] ? path.join(pasta, candidatos[0].nome) : null;
 }
 
 /// Envia um arquivo da pasta do candidato e devolve a URL publica.
@@ -64,7 +71,7 @@ async function main() {
 
   console.log('Imagens:');
   const foto = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'foto'), 'foto');
-  const banner = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'banner'), 'banner');
+  const banner = await subirImagem(prisma, tenant.id, acharImagem(pasta, ['capa', 'banner']), 'banner');
   const cidade = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'cidade'), 'cidade');
   if (!foto && !banner && !cidade) console.log('  nenhuma imagem encontrada na pasta');
 
@@ -74,6 +81,7 @@ async function main() {
       ...(dados.numero ? { number: String(dados.numero) } : {}),
       ...(dados.slogan ? { slogan: dados.slogan } : {}),
       ...(dados.bio ? { bio: dados.bio } : {}),
+      ...(dados.curriculo ? { curriculum: dados.curriculo } : {}),
       ...(foto ? { photoUrl: foto } : {}),
       ...(banner ? { bannerUrl: banner } : {}),
       ...(cidade ? { proposalsBgUrl: cidade } : {}),

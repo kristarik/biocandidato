@@ -31,7 +31,11 @@ model Tenant {
   city     String? @db.VarChar(120)
   state    String? @db.Char(2)
   bio      String? @db.Text
-  slogan   String? @db.VarChar(200)
+  /// Trajetoria completa, aberta so quando o eleitor toca em "Meu curriculo".
+  /// Fica separada da bio porque o topo precisa de duas linhas, nao de uma
+  /// biografia — quem quiser mais procura.
+  curriculum String? @db.Text
+  slogan     String? @db.VarChar(200)
   photoUrl String? @map("photo_url") @db.VarChar(500)
   logoUrl  String? @map("logo_url") @db.VarChar(500)
 
