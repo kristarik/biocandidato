@@ -2,6 +2,11 @@ node_modules/
 .env
 .env.*
 !.env.example
+
+# Material de candidato: foto, telefone e rascunho de campanha nao entram num
+# repositorio publico. Só o guia da pasta e versionado.
+candidatos/*
+!candidatos/LEIA-ME.md
 *.log
 npm-debug.log*
 .DS_Store
