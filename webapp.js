@@ -126,6 +126,21 @@ function render(t, { chavePush, proporcaoCapa } = {}) {
       </section>`
     : '';
 
+  const curriculo = t.curriculum
+    ? `<section id="curriculo">
+        <h2>MEU CURRÍCULO</h2>
+        <p class="subtitulo">CLIQUE PARA VER MEU CURRÍCULO</p>
+        <details class="curriculo">
+          <summary>
+            <span>VER CURRÍCULO</span>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+              stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 9.5 12 15l6-5.5"/></svg>
+          </summary>
+          <div class="curriculo-corpo"><p>${esc(t.curriculum)}</p></div>
+        </details>
+      </section>`
+    : '';
+
   const redes = t.socialLinks.length
     ? `<section id="redes">
         <h2>ME ACOMPANHE NAS REDES</h2>
@@ -272,24 +287,27 @@ ${tagsDeIcone()}
   }
 
   /* ---------- meu curriculo ---------- */
-  .curriculo {
-    max-width: 34rem; margin: 1rem auto 0; text-align: left;
-    border: 1px solid var(--borda); border-radius: 12px; overflow: hidden;
-  }
+  /* O gatilho e um botao no mesmo peso dos outros da pagina: e uma acao, nao
+     um item de lista. */
+  .curriculo { margin: 1.1rem 1.25rem 0; }
   .curriculo summary {
-    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-    padding: .85rem 1.1rem; cursor: pointer; list-style: none;
-    font-size: .88rem; font-weight: 650; color: var(--primaria);
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+    padding: .95rem 1.1rem; cursor: pointer; list-style: none;
+    background: var(--escuro); color: #fff; border-radius: 10px;
+    font-size: .82rem; font-weight: 750; letter-spacing: .07em; text-transform: uppercase;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
   }
   .curriculo summary::-webkit-details-marker { display: none; }
+  .curriculo summary:active { transform: scale(.98); }
   .curriculo summary svg { flex: 0 0 auto; transition: transform 220ms cubic-bezier(.23,1,.32,1); }
+  .curriculo[open] summary { border-radius: 10px 10px 0 0; }
   .curriculo[open] summary svg { transform: rotate(180deg); }
-  .curriculo-corpo { padding: 0 1.1rem 1.1rem; }
-  .curriculo-corpo p {
-    margin: 0; font-size: .89rem; color: var(--suave); white-space: pre-line;
+  .curriculo-corpo {
+    padding: 1.1rem; background: var(--superficie);
+    border-radius: 0 0 10px 10px; text-align: left;
   }
-  @media (hover: hover) and (pointer: fine) {
-    .curriculo summary:hover { background: var(--superficie); }
+  .curriculo-corpo p {
+    margin: 0; font-size: .9rem; color: var(--texto); white-space: pre-line; line-height: 1.6;
   }
 
   /* ---------- secoes ---------- */
@@ -482,21 +500,10 @@ ${tagsDeIcone()}
     ${t.party || local ? `<p class="meta">${esc([t.party, local].filter(Boolean).join(' · '))}</p>` : ''}
   </div>
   ${t.bio || t.slogan ? `<p class="resumo">${esc(t.bio || t.slogan)}</p>` : ''}
-  ${
-    t.curriculum
-      ? `<details class="curriculo">
-          <summary>
-            <span>Meu currículo</span>
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
-              stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9.5 12 15l6-5.5"/></svg>
-          </summary>
-          <div class="curriculo-corpo"><p>${esc(t.curriculum)}</p></div>
-        </details>`
-      : ''
-  }
 </div>
 
 ${propostas}
+${curriculo}
 ${blocoBanner(bannerPor('MEIO'))}
 ${blocoApoio(1, true)}
 ${redes}
