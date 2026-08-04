@@ -21,7 +21,8 @@
     "candidato:senha": "node scripts/redefinir-senha.js",
     "candidato:apoiadores": "node scripts/apoiadores-exemplo.js",
     "master:novo": "node scripts/novo-master.js",
-    "sms:teste": "node scripts/testar-sms.js"
+    "sms:teste": "node scripts/testar-sms.js",
+    "candidato:montar": "node scripts/montar-candidato.js"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",
