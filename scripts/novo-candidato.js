@@ -6,7 +6,7 @@
 //   npm run candidato:novo -- --nome "Dra. Maria" --numero 12345 \
 //     --partido "PSDB" --cidade "Recife" --estado PE
 //
-// Opcionais: --slug --email --slogan --cor --cor2 --bio --creditos
+// Opcionais: --slug --usuario --email --slogan --cor --cor2 --bio --creditos
 require('dotenv').config();
 
 const { getPrisma } = require('../prisma-client');
@@ -44,7 +44,7 @@ async function main() {
   console.log('\nCandidato criado.\n');
   console.log(`  Nome      ${tenant.name}`);
   console.log(`  WebApp    https://${dominio}/${tenant.slug}`);
-  console.log(`  Login     ${user.email}`);
+  console.log(`  Usuario   ${user.username}`);
   console.log(`  Senha     ${senha}  (temporaria)`);
   console.log('\nAnote a senha agora: ela e gravada com hash e nao pode ser lida depois.');
   console.log('No primeiro acesso o painel exige a troca antes de liberar qualquer tela.\n');

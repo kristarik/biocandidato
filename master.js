@@ -122,7 +122,7 @@ router.post('/novo', async (req, res, next) => {
         aba: 'novo',
         nome: req.sessao.nome,
         corpo: vistas.telaNovoCandidato({
-          criado: { id: tenant.id, nome: tenant.name, slug: tenant.slug, email: user.email, senha },
+          criado: { id: tenant.id, nome: tenant.name, slug: tenant.slug, usuario: user.username, senha },
         }),
       })
     );

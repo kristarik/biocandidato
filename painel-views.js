@@ -311,7 +311,7 @@ ${
 </html>`;
 }
 
-function telaEntrar({ erro, email }) {
+function telaEntrar({ erro, usuario }) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -336,8 +336,9 @@ ${tagsDeIcone()}
   <div class="cartao">
     ${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
     <form method="post" action="/painel/entrar">
-      <label class="campo"><span>E-mail</span>
-        <input type="email" name="email" value="${esc(email || '')}" required autofocus autocomplete="username">
+      <label class="campo"><span>Usuário</span>
+        <input type="text" name="usuario" value="${esc(usuario || '')}" required autofocus
+          autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
       </label>
       <label class="campo"><span>Senha</span>
         <input type="password" name="senha" required autocomplete="current-password">

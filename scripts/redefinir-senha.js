@@ -20,11 +20,11 @@ async function main() {
     process.exit(1);
   }
 
-  const { senha, email } = await redefinirSenha(tenant.id);
+  const { senha, usuario } = await redefinirSenha(tenant.id);
 
   console.log(`\nSenha redefinida para ${tenant.name}.\n`);
   console.log('  Painel   /painel/entrar');
-  console.log(`  Login    ${email}`);
+  console.log(`  Usuario  ${usuario}`);
   console.log(`  Senha    ${senha}  (temporaria)\n`);
   console.log('No proximo acesso o painel exige a troca antes de liberar o restante.\n');
 }

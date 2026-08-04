@@ -205,7 +205,7 @@ function telaCandidato({ tenant, numeros, creditos, extrato, acesso, senhaNova }
 
 <div class="cartao">
   <h2>Acesso do candidato</h2>
-  <p class="vazio">Login: <strong>${esc(acesso?.email || 'sem usuário vinculado')}</strong></p>
+  <p class="vazio">Usuário: <strong>${esc(acesso?.username || 'sem acesso vinculado')}</strong></p>
   ${
     senhaNova
       ? `<div class="credencial">Nova senha temporária: <strong>${esc(senhaNova)}</strong><br>
@@ -236,7 +236,7 @@ function telaNovoCandidato({ erro, valores = {}, criado }) {
   <p><strong>${esc(criado.nome)}</strong> está no ar.</p>
   <div class="credencial">
     Site: candidato.bio/${esc(criado.slug)}<br>
-    Login: ${esc(criado.email)}<br>
+    Usu�rio: ${esc(criado.usuario)}<br>
     Senha temporária: <strong>${esc(criado.senha)}</strong>
   </div>
   <p class="vazio" style="margin-top:.8rem">
@@ -262,7 +262,7 @@ ${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
     ${campo('nome', 'Nome do candidato', 'required maxlength="120" autofocus')}
     <div class="linha">
       ${campo('slug', 'Endereço (deixe vazio para gerar do nome)', 'maxlength="60" placeholder="dra-maria"')}
-      ${campo('email', 'E-mail de acesso (vazio gera do endereço)', 'maxlength="180"', 'email')}
+      ${campo('usuario', 'Usuário de acesso (vazio usa o endereço)', 'maxlength="60" placeholder="dra-maria"')}
     </div>
     <div class="linha">
       ${campo('numero', 'Número', 'maxlength="10"')}

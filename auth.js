@@ -41,17 +41,17 @@ function bloqueado(email) {
   return registro.contagem >= MAX_TENTATIVAS;
 }
 
-/// Autentica e devolve o vinculo com o tenant. Erros nunca distinguem email
+/// Autentica e devolve o vinculo com o tenant. Erros nunca distinguem usuario
 /// inexistente de senha errada: a diferenca revelaria quais contas existem.
-async function autenticar(email, senha) {
-  const chave = String(email || '').trim().toLowerCase();
+async function autenticar(usuario, senha) {
+  const chave = String(usuario || '').trim().toLowerCase();
   if (bloqueado(chave)) {
     return { erro: 'Muitas tentativas. Aguarde alguns minutos.' };
   }
 
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
-    where: { email: chave },
+    where: { username: chave },
     include: { tenants: { include: { tenant: true } } },
   });
 

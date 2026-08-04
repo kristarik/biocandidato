@@ -1,10 +1,10 @@
 // Cria um usuario Master, que administra a plataforma inteira.
-// Uso: npm run master:novo -- --nome "Tarik" --email tarik@candidato.bio
+// Uso: npm run master:novo -- --nome "Tarik" --usuario tarik
 require('dotenv').config();
 
 const bcrypt = require('bcryptjs');
 const { getPrisma } = require('../prisma-client');
-const { gerarSenha } = require('../provisionar');
+const { gerarSenha, gerarSlug } = require('../provisionar');
 
 function lerArgs(argv) {
   const args = {};
@@ -23,23 +23,24 @@ function lerArgs(argv) {
 
 async function main() {
   const args = lerArgs(process.argv.slice(2));
-  if (!args.nome || !args.email) {
-    console.error('Uso: npm run master:novo -- --nome "Seu Nome" --email voce@dominio.com');
+  if (!args.nome) {
+    console.error('Uso: npm run master:novo -- --nome "Seu Nome" --usuario seuusuario');
     process.exit(1);
   }
 
   const prisma = getPrisma();
-  const email = String(args.email).trim().toLowerCase();
+  const username = String(args.usuario || gerarSlug(args.nome)).trim().toLowerCase();
 
-  if (await prisma.user.findUnique({ where: { email } })) {
-    console.error(`O e-mail "${email}" ja esta em uso.`);
+  if (await prisma.user.findUnique({ where: { username } })) {
+    console.error(`O usuario "${username}" ja esta em uso.`);
     process.exit(1);
   }
 
   const senha = gerarSenha();
   const user = await prisma.user.create({
     data: {
-      email,
+      username,
+      email: args.email ? String(args.email).trim().toLowerCase() : null,
       name: String(args.nome).trim(),
       role: 'MASTER',
       passwordHash: await bcrypt.hash(senha, 12),
@@ -48,8 +49,8 @@ async function main() {
   });
 
   console.log('\nMaster criado.\n');
-  console.log(`  Painel   /painel/entrar  (entra e cai no /master)`);
-  console.log(`  Login    ${user.email}`);
+  console.log('  Painel   /painel/entrar  (entra e cai no /master)');
+  console.log(`  Usuario  ${user.username}`);
   console.log(`  Senha    ${senha}  (temporaria)\n`);
   console.log('No primeiro acesso o painel exige a troca da senha.\n');
 }

@@ -57,17 +57,17 @@ function texto(valor, limite) {
 // ---------------------------------------------------------------------------
 
 router.get('/entrar', (req, res) => {
-  res.type('html').send(vistas.telaEntrar({ erro: req.query.erro, email: req.query.email }));
+  res.type('html').send(vistas.telaEntrar({ erro: req.query.erro, usuario: req.query.usuario }));
 });
 
 router.post('/entrar', async (req, res, next) => {
   try {
-    const { email, senha } = req.body;
-    const resultado = await autenticar(email, senha);
+    const { usuario, senha } = req.body;
+    const resultado = await autenticar(usuario, senha);
 
     if (resultado.erro) {
       return res.status(401).type('html').send(
-        vistas.telaEntrar({ erro: resultado.erro, email })
+        vistas.telaEntrar({ erro: resultado.erro, usuario })
       );
     }
 

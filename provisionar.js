@@ -42,13 +42,18 @@ async function criarCandidato(dados, { createdById } = {}) {
   if (!slug) throw new ErroProvisionamento('Não foi possível gerar o endereço a partir do nome.');
   if (RESERVADOS.has(slug)) throw new ErroProvisionamento(`O endereço "${slug}" é reservado pelo sistema.`);
 
-  const email = String(dados.email || `${slug}@candidato.bio`).trim().toLowerCase();
+  // O usuario e o proprio endereco do site: quem tem candidato.bio/diego-moreno
+  // entra como "diego-moreno". Uma coisa a menos para o candidato decorar.
+  const username = String(dados.usuario || slug).trim().toLowerCase();
+  const email = dados.email ? String(dados.email).trim().toLowerCase() : null;
 
-  const [slugEmUso, emailEmUso] = await Promise.all([
+  const [slugEmUso, usuarioEmUso, emailEmUso] = await Promise.all([
     prisma.tenant.findUnique({ where: { slug }, select: { id: true } }),
-    prisma.user.findUnique({ where: { email }, select: { id: true } }),
+    prisma.user.findUnique({ where: { username }, select: { id: true } }),
+    email ? prisma.user.findUnique({ where: { email }, select: { id: true } }) : null,
   ]);
   if (slugEmUso) throw new ErroProvisionamento(`Já existe candidato no endereço "${slug}".`);
+  if (usuarioEmUso) throw new ErroProvisionamento(`O usuário "${username}" já está em uso.`);
   if (emailEmUso) throw new ErroProvisionamento(`O e-mail "${email}" já está em uso.`);
 
   const senha = gerarSenha();
@@ -76,6 +81,7 @@ async function criarCandidato(dados, { createdById } = {}) {
 
     const user = await tx.user.create({
       data: {
+        username,
         email,
         name: nome,
         role: 'CANDIDATE',
@@ -109,7 +115,7 @@ async function criarCandidato(dados, { createdById } = {}) {
         action: 'CREATE',
         entity: 'Tenant',
         entityId: tenant.id,
-        after: { slug, name: nome, email, creditos },
+        after: { slug, name: nome, username, creditos },
       },
     });
 
@@ -144,7 +150,7 @@ async function redefinirSenha(tenantId, { createdById } = {}) {
     },
   });
 
-  return { senha, email: vinculo.user.email, tenant: vinculo.tenant };
+  return { senha, usuario: vinculo.user.username, tenant: vinculo.tenant };
 }
 
 module.exports = { criarCandidato, redefinirSenha, gerarSlug, gerarSenha, ErroProvisionamento };
