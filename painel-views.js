@@ -927,6 +927,7 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
     <div class="linha">
       ${campo('primaryColor', 'Cor principal', cor(tenant.primaryColor, '#1e40af'), 'color')}
       ${campo('secondaryColor', 'Cor secundária', cor(tenant.secondaryColor, '#f59e0b'), 'color')}
+      ${campo('darkColor', 'Cor dos botões', cor(tenant.darkColor, '#111114'), 'color')}
     </div>
     <button type="submit">Salvar identidade</button>
   </form>

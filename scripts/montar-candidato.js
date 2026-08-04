@@ -11,9 +11,24 @@ const path = require('node:path');
 const { getPrisma } = require('../prisma-client');
 const midia = require('../midia');
 
+const EXTENSOES = /\.(jpe?g|png|webp|gif)$/i;
+
+/// Acha a imagem pelo pedaco do nome, nao pelo nome exato: o arquivo chega do
+/// cliente com o nome que ele salvou — "riodejaneiro-cidade.jpg" tambem e a
+/// cidade.
+function acharImagem(pasta, palavra) {
+  if (!fs.existsSync(pasta)) return null;
+  const arquivos = fs
+    .readdirSync(pasta)
+    .filter((n) => EXTENSOES.test(n) && n.toLowerCase().includes(palavra))
+    // "banner-original" nao deve ganhar de "banner": o mais curto e o oficial.
+    .sort((a, b) => a.length - b.length);
+  return arquivos[0] ? path.join(pasta, arquivos[0]) : null;
+}
+
 /// Envia um arquivo da pasta do candidato e devolve a URL publica.
 async function subirImagem(prisma, tenantId, arquivo, tipo) {
-  if (!fs.existsSync(arquivo)) return null;
+  if (!arquivo || !fs.existsSync(arquivo)) return null;
   const { url } = await midia.salvar({
     tenantId,
     tipo,
@@ -48,13 +63,9 @@ async function main() {
   console.log(`\nMontando ${tenant.name}...\n`);
 
   console.log('Imagens:');
-  const foto = await subirImagem(prisma, tenant.id, path.join(pasta, 'foto.jpg'), 'foto');
-  const banner =
-    (await subirImagem(prisma, tenant.id, path.join(pasta, 'banner.jpg'), 'banner')) ||
-    (await subirImagem(prisma, tenant.id, path.join(pasta, 'banner.png'), 'banner'));
-  const cidade =
-    (await subirImagem(prisma, tenant.id, path.join(pasta, 'cidade.jpg'), 'cidade')) ||
-    (await subirImagem(prisma, tenant.id, path.join(pasta, 'cidade.png'), 'cidade'));
+  const foto = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'foto'), 'foto');
+  const banner = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'banner'), 'banner');
+  const cidade = await subirImagem(prisma, tenant.id, acharImagem(pasta, 'cidade'), 'cidade');
   if (!foto && !banner && !cidade) console.log('  nenhuma imagem encontrada na pasta');
 
   await prisma.tenant.update({
@@ -68,6 +79,7 @@ async function main() {
       ...(cidade ? { proposalsBgUrl: cidade } : {}),
       ...(dados.cor ? { primaryColor: dados.cor } : {}),
       ...(dados.cor2 ? { secondaryColor: dados.cor2 } : {}),
+      ...(dados.corEscura ? { darkColor: dados.corEscura } : {}),
     },
   });
 

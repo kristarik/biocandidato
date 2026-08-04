@@ -45,6 +45,11 @@ model Tenant {
   primaryColor   String @default("#1e40af") @map("primary_color") @db.Char(7)
   secondaryColor String @default("#f59e0b") @map("secondary_color") @db.Char(7)
 
+  /// Tom escuro de cartoes e botoes. Quando a campanha tem paleta fechada, o
+  /// valor dela e melhor que o escurecimento que a gente calcularia da cor
+  /// principal. Vazio: derivamos da principal.
+  darkColor String? @map("dark_color") @db.Char(7)
+
   /// Saldo de disparos. E cache do extrato em credit_transactions, atualizado
   /// na mesma transacao do lancamento — o extrato e que manda, porque so ele
   /// responde quanto o candidato comprou e quanto ja gastou.

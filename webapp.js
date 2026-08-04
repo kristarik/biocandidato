@@ -182,10 +182,10 @@ ${tagsDeIcone()}
     --primaria: ${primaria};
     --secundaria: ${secundaria};
     /* Botoes e cartoes vestem a cor do candidato, nao um preto neutro: a
-       identidade dele precisa aparecer no site inteiro, nao so no topo. O
-       escurecimento garante contraste do texto branco mesmo quando a cor
-       principal for clara. */
-    --escuro: color-mix(in srgb, ${primaria} 82%, #000);
+       identidade dele precisa aparecer no site inteiro, nao so no topo.
+       Campanha com paleta fechada informa o proprio tom escuro; sem ele,
+       escurecemos a cor principal para garantir contraste do texto branco. */
+    --escuro: ${cor(t.darkColor, '') || `color-mix(in srgb, ${primaria} 82%, #000)`};
     --superficie: #f4f4f6;
     --texto: #1c1c1e;
     --suave: #6b6b70;

@@ -658,6 +658,7 @@ router.post('/conteudo/perfil', camposDeImagem, async (req, res, next) => {
       proposalsBgUrl: b.removerCidade === '1' ? null : cidadeNova ?? antes.proposalsBgUrl,
       primaryColor: hex(b.primaryColor, antes.primaryColor),
       secondaryColor: hex(b.secondaryColor, antes.secondaryColor),
+      darkColor: hex(b.darkColor, antes.darkColor),
     };
 
     await prisma.$transaction([
