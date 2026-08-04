@@ -289,8 +289,16 @@ model PushToken {
   tenantId    String @map("tenant_id") @db.Char(36)
   supporterId String @map("supporter_id") @db.Char(36)
 
-  token    String  @unique @db.VarChar(255)
+  /// Endpoint da inscricao no navegador. Nao e unico sozinho: todos os
+  /// candidatos moram no mesmo dominio, entao um eleitor que apoia dois
+  /// candidatos gera o mesmo endpoint para os dois.
+  token    String  @db.VarChar(500)
   platform String? @db.VarChar(30)
+
+  /// Chaves da inscricao Web Push. Sem elas a mensagem nao pode ser cifrada
+  /// para aquele navegador.
+  p256dh String? @db.VarChar(255)
+  auth   String? @db.VarChar(255)
 
   active     Boolean   @default(true)
   lastSeenAt DateTime? @map("last_seen_at")
@@ -300,6 +308,7 @@ model PushToken {
   supporter     Supporter      @relation(fields: [supporterId], references: [id], onDelete: Cascade)
   notifications Notification[]
 
+  @@unique([tenantId, token(length: 191)])
   @@index([tenantId, active])
   @@index([supporterId])
   @@map("push_tokens")

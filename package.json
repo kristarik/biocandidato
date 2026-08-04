@@ -20,7 +20,8 @@
     "postinstall": "prisma generate",
     "candidato:senha": "node scripts/redefinir-senha.js",
     "candidato:apoiadores": "node scripts/apoiadores-exemplo.js",
-    "master:novo": "node scripts/novo-master.js"
+    "master:novo": "node scripts/novo-master.js",
+    "sms:teste": "node scripts/testar-sms.js"
   },
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",
@@ -32,7 +33,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "mysql2": "^3.23.2",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "prisma": "^7.9.1"

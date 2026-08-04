@@ -7,9 +7,11 @@ const master = require('./master');
 const landing = require('./landing');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto } = require('./webapp');
-const { iniciar, confirmar, completar, ErroCadastro } = require('./cadastro');
+const { iniciar, completar, ErroCadastro } = require('./cadastro');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
+const push = require('./push');
+const { getPrisma } = require('./prisma-client');
 
 const app = express();
 
@@ -43,6 +45,13 @@ app.get('/', (req, res) => {
 // continua existindo — monitoramento externo pode depender dele.
 app.get('/status', (req, res) => {
   res.json({ app: 'Candidato Online', status: 'online', version: '0.1.0' });
+});
+
+// O service worker precisa vir da raiz: o escopo dele nao pode subir acima da
+// pasta onde e servido, e a inscricao de push vale para o dominio inteiro.
+app.get('/sw.js', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=0, must-revalidate');
+  res.type('application/javascript').sendFile('sw.js', { root: 'public' });
 });
 
 // Imagens enviadas pelo painel. Ficam no banco, entao sobrevivem ao deploy.
@@ -101,8 +110,11 @@ async function tratar(res, acao) {
   try {
     res.json(await acao());
   } catch (err) {
-    if (err instanceof ErroCadastro) {
-      return res.status(err.status).json({ erro: err.message });
+    // Qualquer erro que traga um status de cliente e culpa do pedido, e a
+    // mensagem dele ajuda quem esta preenchendo o formulario.
+    const status = err instanceof ErroCadastro ? err.status : err.status;
+    if (Number.isInteger(status) && status >= 400 && status < 500) {
+      return res.status(status).json({ erro: err.message });
     }
     console.error('Erro no cadastro:', err);
     res.status(500).json({ erro: 'Erro inesperado. Tente novamente.' });
@@ -153,17 +165,6 @@ app.post('/:slug/apoiar/iniciar', comTenant, (req, res) =>
   )
 );
 
-app.post('/:slug/apoiar/confirmar', comTenant, (req, res) =>
-  tratar(res, () =>
-    confirmar({
-      tenant: req.tenant,
-      telefone: req.body?.telefone,
-      codigo: req.body?.codigo,
-      ...contexto(req),
-    })
-  )
-);
-
 app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
   tratar(res, () =>
     completar({
@@ -175,6 +176,27 @@ app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
   )
 );
 
+// Inscricao de push do navegador. Chega depois do cadastro, com o id do
+// apoiador, para o alcance saber a quem a notificacao pertence.
+app.post('/:slug/apoiar/push', comTenant, (req, res) =>
+  tratar(res, async () => {
+    const supporterId = String(req.body?.supporterId || '');
+    const dono = supporterId
+      ? await getPrisma().supporter.findFirst({
+          where: { id: supporterId, tenantId: req.tenant.id },
+          select: { id: true },
+        })
+      : null;
+
+    return push.inscrever({
+      tenantId: req.tenant.id,
+      supporterId: dono?.id || null,
+      inscricao: req.body?.inscricao,
+      userAgent: req.get('user-agent'),
+    });
+  })
+);
+
 app.get('/:slug', async (req, res, next) => {
   const { slug } = req.params;
   if (!SLUG_VALIDO.test(slug)) return next();
@@ -184,7 +206,7 @@ app.get('/:slug', async (req, res, next) => {
     if (!tenant) {
       return res.status(404).type('html').send(paginaNaoEncontrada());
     }
-    res.type('html').send(render(tenant));
+    res.type('html').send(render(tenant, { chavePush: push.chavePublica() }));
   } catch (err) {
     next(err);
   }

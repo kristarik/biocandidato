@@ -164,9 +164,9 @@ function variacao(atual, anterior) {
 }
 
 const NOME_ETAPA = {
-  PENDENTE: 'Informou o número',
-  CONFIRMADO: 'Confirmou o código',
-  COMPLETO: 'Completou o cadastro',
+  PENDENTE: 'Cadastro incompleto',
+  CONFIRMADO: 'Deixou só o telefone',
+  COMPLETO: 'Informou nome e CEP',
 };
 
 router.get('/inicio', async (req, res, next) => {
@@ -454,13 +454,11 @@ router.get('/apoiadores/exportar', async (req, res, next) => {
 // Turbinar
 // ---------------------------------------------------------------------------
 
-/// Quem cada canal alcanca. Push exige autorizacao de notificacao no
-/// aparelho; WhatsApp, SMS e RCS exigem numero confirmado, porque todos
-/// dependem do telefone — RCS chega na mesma caixa do SMS, e o WhatsApp usa o
-/// mesmo numero que a pessoa confirmou por codigo.
+/// Quem cada canal alcanca. Push exige que o navegador tenha devolvido uma
+/// inscricao valida; WhatsApp, SMS e RCS alcancam todo mundo que informou o
+/// telefone, ja que o cadastro nao pede confirmacao por codigo.
 function filtroDoCanal(canal) {
-  if (canal === 'PUSH') return { pushActive: true };
-  return { smsValidated: true };
+  return canal === 'PUSH' ? { pushActive: true } : {};
 }
 
 async function alcancePorCanal(prisma, tenantId, extra = {}) {
@@ -469,7 +467,7 @@ async function alcancePorCanal(prisma, tenantId, extra = {}) {
   const base = { tenantId, deletedAt: null, optedOutAt: null, ...extra };
   const [push, telefone] = await Promise.all([
     prisma.supporter.count({ where: { ...base, pushActive: true } }),
-    prisma.supporter.count({ where: { ...base, smsValidated: true } }),
+    prisma.supporter.count({ where: base }),
   ]);
   return { PUSH: push, WHATSAPP: telefone, SMS: telefone, RCS: telefone };
 }

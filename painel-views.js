@@ -363,9 +363,15 @@ function formatarData(data) {
   }).format(data);
 }
 
+const ROTULO_STATUS = {
+  PENDENTE: 'Incompleto',
+  CONFIRMADO: 'Só telefone',
+  COMPLETO: 'Completo',
+};
+
 function etiquetaStatus(status) {
   const classe = status === 'COMPLETO' ? 'completo' : status === 'CONFIRMADO' ? '' : 'pendente';
-  return `<span class="etiqueta ${classe}">${esc(status)}</span>`;
+  return `<span class="etiqueta ${classe}">${esc(ROTULO_STATUS[status] || status)}</span>`;
 }
 
 /// Cor da variacao = direcao x se subir e bom. Aqui subir e sempre bom, mas o
@@ -422,6 +428,11 @@ function telaInicio({ numeros, serie, funil, origens, cidades, ultimos }) {
   <div class="apoio">
     de ${numeros.total.toLocaleString('pt-BR')} apoiadores ·
     ${numeros.total ? Math.round((numeros.push / numeros.total) * 100) : 0}% autorizaram notificações
+    ${
+      numeros.total && numeros.push === 0
+        ? '<br><strong>Ninguém ativou os avisos ainda.</strong> O eleitor precisa tocar em “Ativar avisos” no seu site.'
+        : ''
+    }
   </div>
   <a class="botao" href="/painel/turbinar" style="margin-top:.9rem">Turbinar campanha</a>
 </div>
@@ -571,8 +582,8 @@ function telaApoiadores({ apoiadores, filtros, cidades, origens, total, pagina: 
     <label class="campo"><span>Status</span>
       <select name="status">
         <option value="">Todos</option>
-        ${['PENDENTE', 'CONFIRMADO', 'COMPLETO']
-          .map((s) => `<option value="${s}"${filtros.status === s ? ' selected' : ''}>${s}</option>`)
+        ${['CONFIRMADO', 'COMPLETO', 'PENDENTE']
+          .map((s) => `<option value="${s}"${filtros.status === s ? ' selected' : ''}>${ROTULO_STATUS[s]}</option>`)
           .join('')}
       </select>
     </label>

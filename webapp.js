@@ -60,37 +60,39 @@ function blocoApoio(indice, ancora) {
     <button type="submit">CADASTRAR AGORA</button>
   </form>
 
-  <form class="etapa etapa-codigo" hidden novalidate>
-    <p class="ajuda">Enviamos um código por SMS para <strong class="eco-telefone"></strong>.</p>
-    <label class="campo">
-      <input type="text" name="codigo" inputmode="numeric" autocomplete="one-time-code"
-        maxlength="6" placeholder="DIGITE O CÓDIGO DE 6 DÍGITOS" required>
-    </label>
-    <button type="submit">CONFIRMAR</button>
-    <button type="button" class="secundario voltar">Corrigir número</button>
-  </form>
-
   <form class="etapa etapa-dados" hidden novalidate>
-    <p class="ajuda">Número confirmado. Falta pouco.</p>
+    <p class="ajuda">Recebemos seu número. Quer que a campanha te chame pelo nome?</p>
     <label class="campo">
       <input type="text" name="nome" autocomplete="name" placeholder="SEU NOME COMPLETO" required>
     </label>
     <label class="campo">
       <input type="text" name="cep" inputmode="numeric" autocomplete="postal-code"
-        maxlength="9" placeholder="SEU CEP">
+        maxlength="9" placeholder="SEU CEP (OPCIONAL)">
     </label>
-    <button type="submit">FINALIZAR CADASTRO</button>
+    <button type="submit">CONTINUAR</button>
+    <button type="button" class="secundario pular">Agora não</button>
   </form>
+
+  <div class="etapa etapa-push" hidden>
+    <p class="ajuda">Falta um passo. Ative os avisos para saber das novidades primeiro.</p>
+    <button type="button" class="ativar-push">ATIVAR AVISOS NO CELULAR</button>
+    <button type="button" class="secundario pular-push">Agora não</button>
+  </div>
 
   <div class="etapa etapa-fim" hidden>
     <p class="sucesso">Cadastro concluído. Obrigado pelo seu apoio!</p>
   </div>
 
+  <p class="consentimento">
+    Ao se cadastrar você autoriza o recebimento de mensagens desta campanha e
+    pode sair da lista quando quiser.
+  </p>
+
   <p class="aviso" role="alert" hidden></p>
 </section>`;
 }
 
-function render(t) {
+function render(t, { chavePush } = {}) {
   const primaria = cor(t.primaryColor, '#1e40af');
   const secundaria = cor(t.secondaryColor, '#f59e0b');
   const local = [t.city, t.state].filter(Boolean).join(' - ');
@@ -328,6 +330,18 @@ ${tagsDeIcone()}
     margin: 0; padding: 1.1rem; text-align: center; border-radius: 10px;
     background: var(--superficie); font-weight: 600;
   }
+  .apoio .ativar-push {
+    width: 100%; padding: .95rem; border: 0; border-radius: 8px; cursor: pointer;
+    background: var(--secundaria); color: #1c1c1e; font-size: .95rem; font-weight: 700;
+    letter-spacing: .05em; font-family: inherit;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
+  }
+  .apoio .ativar-push:active { transform: scale(.97); }
+  .apoio .ativar-push:disabled { opacity: .55; cursor: progress; }
+  .consentimento {
+    max-width: 34rem; margin: .9rem auto 0; text-align: center;
+    font-size: .74rem; color: var(--suave); line-height: 1.4;
+  }
   .aviso {
     max-width: 34rem; margin: .7rem auto 0; padding: .7rem .9rem; border-radius: 8px;
     background: #fdecec; color: #a3272a; font-size: .84rem; text-align: center;
@@ -445,6 +459,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 (function () {
   var SLUG = ${JSON.stringify(t.slug)};
   var PROPOSTAS = ${JSON.stringify(conteudoPropostas)};
+  var CHAVE_PUSH = ${JSON.stringify(chavePush || '')};
 
   // ----- arrastar com o mouse -----
   // No toque a rolagem nativa ja funciona e e melhor que qualquer emulacao,
@@ -523,13 +538,51 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   }
 
   // ----- cadastro em tres etapas -----
+  // ----- inscricao de push -----
+  function bytesDaChave(base64) {
+    var limpo = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    var bruto = atob(limpo);
+    var saida = new Uint8Array(bruto.length);
+    for (var i = 0; i < bruto.length; i++) saida[i] = bruto.charCodeAt(i);
+    return saida;
+  }
+
+  var pushSuportado = 'serviceWorker' in navigator && 'PushManager' in window && CHAVE_PUSH;
+
+  async function inscreverPush(supporterId) {
+    if (!pushSuportado) return { ok: false, motivo: 'sem-suporte' };
+
+    var permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') return { ok: false, motivo: 'negada' };
+
+    var registro = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    var inscricao = await registro.pushManager.getSubscription();
+    if (!inscricao) {
+      inscricao = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: bytesDaChave(CHAVE_PUSH)
+      });
+    }
+
+    var r = await fetch('/' + SLUG + '/apoiar/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supporterId: supporterId, inscricao: inscricao.toJSON() })
+    });
+    return { ok: r.ok };
+  }
+
+  // ----- cadastro -----
   document.querySelectorAll('[data-apoio]').forEach(function (bloco) {
     var telefoneConfirmado = '';
+    var idApoiador = '';
     var aviso = bloco.querySelector('.aviso');
     var etapas = {
       telefone: bloco.querySelector('.etapa-telefone'),
-      codigo: bloco.querySelector('.etapa-codigo'),
       dados: bloco.querySelector('.etapa-dados'),
+      push: bloco.querySelector('.etapa-push'),
       fim: bloco.querySelector('.etapa-fim')
     };
 
@@ -571,6 +624,13 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
       }
     }
 
+    // Depois do numero salvo, oferece o push; sem suporte no navegador pula
+    // direto para o fim em vez de mostrar um botao que nao faz nada.
+    function seguirParaPush() {
+      if (pushSuportado && Notification.permission !== 'denied') mostrar('push');
+      else mostrar('fim');
+    }
+
     etapas.telefone.addEventListener('submit', async function (evento) {
       evento.preventDefault();
       var botao = etapas.telefone.querySelector('button');
@@ -580,36 +640,42 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
       }, botao);
       if (!dados) return;
       telefoneConfirmado = campoTelefone.value;
-      if (dados.etapa === 'concluido') { mostrar('fim'); return; }
-      bloco.querySelector('.eco-telefone').textContent = campoTelefone.value;
-      mostrar('codigo');
-      if (dados.codigoDev) etapas.codigo.querySelector('[name=codigo]').value = dados.codigoDev;
-    });
-
-    etapas.codigo.addEventListener('submit', async function (evento) {
-      evento.preventDefault();
-      var botao = etapas.codigo.querySelector('button[type=submit]');
-      var dados = await enviar('confirmar', {
-        telefone: telefoneConfirmado,
-        codigo: etapas.codigo.querySelector('[name=codigo]').value
-      }, botao);
-      if (dados) mostrar('dados');
-    });
-
-    etapas.codigo.querySelector('.voltar').addEventListener('click', function () {
-      mostrar('telefone');
+      idApoiador = dados.supporterId || '';
+      if (dados.etapa === 'concluido') { seguirParaPush(); return; }
+      mostrar('dados');
     });
 
     etapas.dados.addEventListener('submit', async function (evento) {
       evento.preventDefault();
-      var botao = etapas.dados.querySelector('button');
+      var botao = etapas.dados.querySelector('button[type=submit]');
       var dados = await enviar('completar', {
         telefone: telefoneConfirmado,
         nome: etapas.dados.querySelector('[name=nome]').value,
         cep: campoCep.value
       }, botao);
-      if (dados) mostrar('fim');
+      if (dados) seguirParaPush();
     });
+
+    // O numero ja esta salvo, entao pular aqui nao perde o contato.
+    etapas.dados.querySelector('.pular').addEventListener('click', seguirParaPush);
+
+    etapas.push.querySelector('.ativar-push').addEventListener('click', async function () {
+      var botao = etapas.push.querySelector('.ativar-push');
+      botao.disabled = true;
+      try {
+        var r = await inscreverPush(idApoiador);
+        if (!r.ok && r.motivo === 'negada') {
+          erro('Você bloqueou os avisos. Dá para liberar depois nas configurações do navegador.');
+        }
+      } catch (e) {
+        erro('Não foi possível ativar os avisos neste aparelho.');
+      } finally {
+        botao.disabled = false;
+        mostrar('fim');
+      }
+    });
+
+    etapas.push.querySelector('.pular-push').addEventListener('click', function () { mostrar('fim'); });
   });
 })();
 </script>
