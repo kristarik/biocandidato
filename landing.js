@@ -396,39 +396,63 @@ ${tagsDeIcone()}
   .tela-retrato {
     position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%);
     width: 68px; height: 68px; border-radius: 50%; background: #dbe3ee;
-    border: 4px solid #fff; display: grid; place-items: center;
-    font-weight: 750; color: var(--azul); font-size: 1.5rem;
+    border: 4px solid #fff; display: grid; place-items: center; overflow: hidden;
   }
-  .tela-corpo { padding: 42px 16px 0; text-align: center; flex: 1; }
-  .tela-nome { font-weight: 750; font-size: .96rem; letter-spacing: -.02em; }
-  .tela-numero { font-weight: 750; font-size: .9rem; color: var(--tinta-fraca); }
-  .tela-partido { font-size: .58rem; font-weight: 700; letter-spacing: .09em; color: var(--azul); margin-top: .3rem; }
-  .tela-cartoes { display: flex; gap: 7px; margin-top: 14px; }
+  /* Silhueta em vez de inicial: o candidato de verdade sobe uma foto, e um
+     vulto comunica isso melhor que uma letra. */
+  .tela-retrato svg { width: 100%; height: 100%; }
+  .tela-corpo { padding: 40px 14px 0; text-align: center; flex: 1; }
+  .tela-nome { font-weight: 750; font-size: .93rem; letter-spacing: -.02em; }
+  .tela-numero { font-weight: 750; font-size: .86rem; color: var(--tinta-fraca); }
+  .tela-partido { font-size: .55rem; font-weight: 700; letter-spacing: .09em; color: var(--azul); margin-top: .28rem; }
+  .tela-secao {
+    margin-top: 13px; font-size: .5rem; font-weight: 800; letter-spacing: .11em;
+    color: var(--tinta-fraca);
+  }
+  /* O terceiro cartao fica cortado na borda: e o que sinaliza que o carrossel
+     desliza, do mesmo jeito que na pagina real. */
+  .tela-cartoes { display: flex; gap: 6px; margin: 7px -14px 0 0; overflow: hidden; }
   .tela-cartao {
-    flex: 1; height: 56px; border-radius: 9px; background: #10151c;
-    display: grid; place-items: center; padding: 6px;
+    flex: 0 0 46%; border-radius: 8px; background: #10151c; color: #fff;
+    padding: 8px 7px 7px; display: flex; flex-direction: column;
+    align-items: center; justify-content: space-between; gap: 6px;
   }
-  .tela-cartao span { width: 70%; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); }
+  .tela-cartao.meio { flex: 0 0 30%; }
+  .tela-cartao strong { font-size: .52rem; font-weight: 700; line-height: 1.25; }
+  .tela-cartao em {
+    font-style: normal; font-size: .4rem; font-weight: 800; letter-spacing: .07em;
+    background: #fff; color: #10151c; border-radius: 4px; padding: 3px 7px; width: 100%;
+  }
   .tela-campo {
-    margin-top: 14px; height: 32px; border-radius: 999px; border: 1.5px solid var(--borda);
-    display: flex; align-items: center; padding: 0 11px; gap: 7px;
+    margin-top: 7px; height: 28px; border-radius: 999px; border: 1.5px solid var(--borda);
+    display: flex; align-items: center; padding: 0 9px; gap: 5px;
   }
-  .tela-campo i { width: 12px; height: 12px; border-radius: 50%; background: var(--verde); flex: 0 0 auto; }
-  .tela-campo span { height: 5px; width: 62%; border-radius: 3px; background: #e2e7ef; }
+  .tela-campo svg { flex: 0 0 auto; }
+  .tela-campo span {
+    font-size: .46rem; font-weight: 700; letter-spacing: .05em; color: #b9c1cd;
+  }
   .tela-botao {
-    margin-top: 7px; height: 32px; border-radius: 8px; background: #10151c; color: #fff;
-    display: grid; place-items: center; font-size: .56rem; font-weight: 750; letter-spacing: .1em;
+    margin-top: 6px; height: 29px; border-radius: 7px; background: #10151c; color: #fff;
+    display: grid; place-items: center; font-size: .52rem; font-weight: 800; letter-spacing: .1em;
   }
   .tela-barra {
-    margin-top: auto; height: 44px; border-top: 1px solid var(--borda);
-    display: flex; align-items: center; justify-content: space-around; padding: 0 8px;
+    margin-top: auto; height: 42px; border-top: 1px solid var(--borda);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 6px;
   }
-  .tela-barra i { width: 15px; height: 15px; border-radius: 4px; background: #e2e7ef; }
-  .tela-barra i.forte { background: var(--azul); border-radius: 50%; width: 26px; height: 26px; }
+  .tela-barra i { display: grid; place-items: center; width: 14px; height: 14px; color: #c3cbd8; }
+  .tela-barra i svg { width: 100%; height: 100%; }
+  .tela-barra i.forte {
+    background: var(--azul); border-radius: 50%; width: 25px; height: 25px;
+    margin-top: -10px; box-shadow: 0 4px 10px rgba(13,79,158,.4); color: #fff;
+  }
+  .tela-barra i.forte svg { width: 13px; height: 13px; }
 
   /* Aviso de push flutuando: mostra o produto em uso, nao so a tela parada. */
+  /* Acima do meio da tela, longe do botao: a notificacao ilustra o produto,
+     mas tapar a chamada para acao esconderia justamente o que a imagem
+     deveria mostrar. */
   .aviso {
-    position: absolute; left: -8%; bottom: 19%; width: min(252px, 68vw);
+    position: absolute; left: -8%; top: 30%; width: min(252px, 68vw);
     /* Em tela estreita o recuo negativo jogaria o cartao para fora do palco,
        e a capa tem overflow oculto: o aviso apareceria cortado ao meio. */
     background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
@@ -443,7 +467,7 @@ ${tagsDeIcone()}
   .aviso-titulo { font-size: .76rem; font-weight: 700; }
   .aviso-texto { font-size: .72rem; color: var(--tinta-media); line-height: 1.35; }
   .aviso-hora { font-size: .64rem; color: var(--tinta-fraca); margin-top: .12rem; }
-  @media (max-width: 760px) { .aviso { left: 0; bottom: 13%; } }
+  @media (max-width: 760px) { .aviso { left: 0; top: 26%; } }
   @keyframes flutuar {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-9px); }
@@ -689,19 +713,48 @@ ${tagsDeIcone()}
         <div class="brilho" aria-hidden="true"></div>
         <div class="aparelho" role="img" aria-label="Página de um candidato aberta no celular, com notificação de push chegando">
           <div class="tela">
-            <div class="tela-capa"><div class="tela-retrato">M</div></div>
+            <div class="tela-capa"><div class="tela-retrato">
+              <svg viewBox="0 0 68 68" aria-hidden="true">
+                <rect width="68" height="68" fill="#cdd8e8"/>
+                <circle cx="34" cy="26" r="12" fill="#8fa3bd"/>
+                <path d="M10 68c0-13 11-21 24-21s24 8 24 21Z" fill="#8fa3bd"/>
+              </svg>
+            </div></div>
             <div class="tela-corpo">
               <div class="tela-nome">Dra. Maria</div>
               <div class="tela-numero">Nº 12345</div>
               <div class="tela-partido">RECIFE · PE</div>
+              <div class="tela-secao">PROPOSTAS</div>
               <div class="tela-cartoes">
-                <div class="tela-cartao"><span></span></div>
-                <div class="tela-cartao"><span></span></div>
+                <div class="tela-cartao">
+                  <strong>Saúde<br>24 horas</strong>
+                  <em>ACESSAR</em>
+                </div>
+                <div class="tela-cartao">
+                  <strong>Creche<br>integral</strong>
+                  <em>ACESSAR</em>
+                </div>
+                <div class="tela-cartao meio">
+                  <strong>Mais<br>ônibus</strong>
+                  <em>ACESSAR</em>
+                </div>
               </div>
-              <div class="tela-campo"><i></i><span></span></div>
+              <div class="tela-secao">SEU APOIO FAZ A DIFERENÇA</div>
+              <div class="tela-campo">
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="#3ea746" aria-hidden="true">
+                  <path d="M12 2a10 10 0 0 0-8.7 15l-1.2 4.3 4.4-1.2A10 10 0 1 0 12 2Zm5.3 14c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-1.7-.1a12 12 0 0 1-5.6-4.8c-.4-.7-.9-1.6-.9-2.5 0-.9.5-1.4.7-1.6.2-.2.4-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.8c0 .2 0 .4-.1.5l-.4.5c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.1 1 2 1.3 2.3 1.4.2.1.4.1.6-.1l.7-.9c.2-.2.3-.2.5-.1l1.7.8c.2.1.4.2.4.3v1Z"/>
+                </svg>
+                <span>INFORME SEU WHATSAPP</span>
+              </div>
               <div class="tela-botao">CADASTRAR AGORA</div>
             </div>
-            <div class="tela-barra"><i></i><i></i><i class="forte"></i><i></i><i></i></div>
+            <div class="tela-barra">
+              <i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 3 10v10h6v-6h6v6h6V10L12 3Z"/></svg></i>
+              <i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v1.6H8V12Zm0 4h8v1.6H8V16Z"/></svg></i>
+              <i class="forte"><svg viewBox="0 0 24 24" fill="#fff"><path d="M13.6 2.2c3.4.5 6.2 3.3 6.7 6.7.4 2.8-.7 5.6-2.9 7.6l-1.9 1.7-4-4-4-4L9.2 8c2-2.2 4.8-3.3 7.6-2.9l-3.2-2.9ZM14.9 9.7a1.7 1.7 0 1 0-2.4-2.4 1.7 1.7 0 0 0 2.4 2.4ZM7.4 14.3l2.3 2.3c-.6 1.9-2 3.3-4.2 4.2-.5.2-1-.3-.8-.8.9-2.2 2.3-3.6 4.2-4.2l-1.5-1.5Z"/></svg></i>
+              <i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8a3 3 0 1 0-2.8-4H15L8.9 7.6A3 3 0 1 0 9 16.4l6.2 3.6h.2A3 3 0 1 0 18 16a3 3 0 0 0-1.9.7L10 13.2a3 3 0 0 0 0-2.4l6.1-3.5A3 3 0 0 0 18 8Z"/></svg></i>
+              <i><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.1 18.4a4 4 0 0 1 0-5.7l2.1-2.1 1.4 1.4-2.1 2.1a2 2 0 0 0 2.8 2.8l2.1-2.1 1.4 1.4-2.1 2.1a4 4 0 0 1-5.6 0Zm2.1-4.3-1.4-1.4 6.4-6.4 1.4 1.4-6.4 6.4Zm7.7-2.4-1.4-1.4 2.1-2.1a2 2 0 1 0-2.8-2.8l-2.1 2.1-1.4-1.4 2.1-2.1a4 4 0 0 1 5.6 5.7l-2.1 2Z"/></svg></i>
+            </div>
           </div>
         </div>
         <div class="aviso">
