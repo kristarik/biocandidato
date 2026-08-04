@@ -126,8 +126,24 @@ function render(t, { chavePush, proporcaoCapa } = {}) {
       </section>`
     : '';
 
-  const curriculo = t.curriculum
-    ? `<section id="curriculo">
+  const experiencias = t.experiences.length
+    ? `<ul class="trajetoria">${t.experiences
+        .map(
+          (e) => `<li>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+              stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+            <span><strong>${esc(e.title)}</strong>${
+              e.detail ? `<small>${esc(e.detail)}</small>` : ''
+            }</span>
+          </li>`
+        )
+        .join('')}</ul>`
+    : '';
+
+  const curriculo =
+    t.curriculum || t.experiences.length
+      ? `<section id="curriculo">
         <h2>MEU CURRÍCULO</h2>
         <p class="subtitulo">CLIQUE PARA VER MEU CURRÍCULO</p>
         <details class="curriculo">
@@ -136,10 +152,13 @@ function render(t, { chavePush, proporcaoCapa } = {}) {
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
               stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 9.5 12 15l6-5.5"/></svg>
           </summary>
-          <div class="curriculo-corpo"><p>${esc(t.curriculum)}</p></div>
+          <div class="curriculo-corpo">
+            ${experiencias}
+            ${t.curriculum ? `<p>${esc(t.curriculum)}</p>` : ''}
+          </div>
         </details>
       </section>`
-    : '';
+      : '';
 
   const redes = t.socialLinks.length
     ? `<section id="redes">
@@ -308,6 +327,15 @@ ${tagsDeIcone()}
   }
   .curriculo-corpo p {
     margin: 0; font-size: .9rem; color: var(--texto); white-space: pre-line; line-height: 1.6;
+  }
+  .trajetoria { list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem; }
+  .trajetoria li { display: flex; gap: .6rem; align-items: flex-start; }
+  .trajetoria li svg { flex: 0 0 auto; margin-top: .2rem; color: var(--primaria); }
+  .trajetoria strong { display: block; font-size: .89rem; font-weight: 650; }
+  .trajetoria small { display: block; font-size: .8rem; color: var(--suave); margin-top: .1rem; }
+  /* Com lista e texto juntos, uma linha separa os dois blocos. */
+  .trajetoria + p {
+    margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--borda);
   }
 
   /* ---------- secoes ---------- */
@@ -792,6 +820,7 @@ async function buscarPorSlug(slug) {
     where: { slug, active: true },
     include: {
       proposals: { where: { published: true }, orderBy: { position: 'asc' }, take: 20 },
+      experiences: { where: { published: true }, orderBy: { position: 'asc' }, take: 15 },
       banners: { where: { published: true }, orderBy: { position: 'asc' }, take: 6 },
       socialLinks: { where: { published: true }, orderBy: { position: 'asc' }, take: 10 },
       links: { where: { published: true }, orderBy: { position: 'asc' }, take: 12 },

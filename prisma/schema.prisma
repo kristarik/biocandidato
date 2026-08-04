@@ -76,6 +76,7 @@ model Tenant {
   photos        Photo[]
   videos        Video[]
   proposals     Proposal[]
+  experiences   Experience[]
   tags          Tag[]
   consents      Consent[]
   banners       Banner[]
@@ -564,6 +565,28 @@ model Video {
 
   @@index([tenantId, position])
   @@map("videos")
+}
+
+/// Item da trajetoria do candidato, exibido dentro de "Meu curriculo".
+/// Separado do texto corrido porque formacao e cargo se leem melhor em lista:
+/// o eleitor bate o olho e ja sabe quem e a pessoa.
+model Experience {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  /// Ex: "Formado em Administracao", "Empresario do ramo de moda".
+  title String @db.VarChar(150)
+  /// Complemento opcional: instituicao, periodo, detalhe.
+  detail   String? @db.VarChar(200)
+  position Int     @default(0)
+
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, position])
+  @@map("experiences")
 }
 
 model Proposal {

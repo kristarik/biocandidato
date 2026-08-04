@@ -107,6 +107,19 @@ async function main() {
     console.log(`\nPropostas: ${dados.propostas.length}`);
   }
 
+  if (dados.experiencias?.length) {
+    await prisma.experience.deleteMany({ where: { tenantId: tenant.id } });
+    await prisma.experience.createMany({
+      data: dados.experiencias.map((e, i) => ({
+        tenantId: tenant.id,
+        title: typeof e === 'string' ? e : e.titulo,
+        detail: typeof e === 'string' ? null : e.detalhe || null,
+        position: i + 1,
+      })),
+    });
+    console.log(`Currículo: ${dados.experiencias.length} itens`);
+  }
+
   if (dados.redes?.length) {
     await prisma.socialLink.deleteMany({ where: { tenantId: tenant.id } });
     await prisma.socialLink.createMany({

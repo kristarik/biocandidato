@@ -819,7 +819,7 @@ ${erro ? `<p class="recado erro">${esc(erro)}</p>` : ''}
 </div>`;
 }
 
-function telaConteudo({ tenant, propostas, redes, links, banners }) {
+function telaConteudo({ tenant, propostas, experiencias = [], redes, links, banners }) {
   const campo = (nome, rotulo, valor, tipo = 'text', extra = '') =>
     `<label class="campo"><span>${rotulo}</span>
       <input type="${tipo}" name="${nome}" value="${esc(valor ?? '')}" ${extra}></label>`;
@@ -944,6 +944,38 @@ function telaConteudo({ tenant, propostas, redes, links, banners }) {
     <label class="campo"><span>Texto completo (abre ao clicar em Acessar agora)</span>
       <textarea name="content" maxlength="8000"></textarea></label>
     <button type="submit">Adicionar proposta</button>
+  </form>
+</div>
+
+<div class="cartao">
+  <h2>Meu currículo</h2>
+  <p class="vazio" style="margin:-.5rem 0 1rem">
+    Cada item vira uma linha da sua trajetória, dentro do botão “Ver currículo”.
+  </p>
+  ${
+    experiencias.length
+      ? experiencias
+          .map(
+            (e) => `<div class="item">
+              <div class="corpo">
+                <strong>${esc(e.title)}</strong>
+                ${e.detail ? `<small>${esc(e.detail)}</small>` : ''}
+              </div>
+              <form method="post" action="/painel/conteudo/experiencia/apagar">
+                <input type="hidden" name="id" value="${esc(e.id)}">
+                <button class="perigo" type="submit">Remover</button>
+              </form>
+            </div>`
+          )
+          .join('')
+      : '<p class="vazio">Nenhum item cadastrado.</p>'
+  }
+  <form method="post" action="/painel/conteudo/experiencia" style="margin-top:1rem">
+    <div class="linha">
+      ${campo('title', 'Item', '', 'text', 'required maxlength="150" placeholder="Ex: Formado em Administração"')}
+      ${campo('detail', 'Complemento (opcional)', '', 'text', 'maxlength="200" placeholder="Ex: UFRJ, 2010"')}
+    </div>
+    <button type="submit">Adicionar ao currículo</button>
   </form>
 </div>
 

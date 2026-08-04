@@ -606,8 +606,9 @@ router.get('/conteudo', async (req, res, next) => {
     const prisma = getPrisma();
     const tenantId = req.tenant.id;
 
-    const [propostas, redes, links, banners] = await Promise.all([
+    const [propostas, experiencias, redes, links, banners] = await Promise.all([
       prisma.proposal.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
+      prisma.experience.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.socialLink.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.importantLink.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
       prisma.banner.findMany({ where: { tenantId }, orderBy: { position: 'asc' } }),
@@ -619,7 +620,7 @@ router.get('/conteudo', async (req, res, next) => {
         tenant: req.tenant,
         aba: 'conteudo',
         recado: recadoDaUrl(req),
-        corpo: vistas.telaConteudo({ tenant: req.tenant, propostas, redes, links, banners }),
+        corpo: vistas.telaConteudo({ tenant: req.tenant, propostas, experiencias, redes, links, banners }),
       })
     );
   } catch (err) {
@@ -735,6 +736,11 @@ const REDES_ACEITAS = ['whatsapp', 'instagram', 'tiktok', 'youtube', 'facebook',
 recurso('proposta', 'proposal', (b) => {
   const title = texto(b.title, 200);
   return title ? { title, description: texto(b.description, 300), content: texto(b.content, 8000) } : null;
+});
+
+recurso('experiencia', 'experience', (b) => {
+  const title = texto(b.title, 150);
+  return title ? { title, detail: texto(b.detail, 200) } : null;
 });
 
 recurso('rede', 'socialLink', (b) => {
