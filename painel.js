@@ -195,6 +195,7 @@ router.get('/inicio', async (req, res, next) => {
     const [
       total, contHoje, cont7, cont7Anterior, cont30, cont30Anterior,
       confirmados, completos, push, porDia, porStatus, porOrigem, porCidade, ultimos,
+      totalDeVisitas, visitasPorDia,
     ] = await Promise.all([
       contar(),
       contar({ createdAt: { gte: hoje } }),
@@ -236,6 +237,11 @@ router.get('/inicio', async (req, res, next) => {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
+      prisma.siteVisit.aggregate({ where: { tenantId }, _sum: { views: true, visitors: true } }),
+      prisma.siteVisit.findMany({
+        where: { tenantId, day: { gte: inicio30 } },
+        orderBy: { day: 'asc' },
+      }),
     ]);
 
     // Dias sem cadastro precisam existir na serie, senao a linha "pula" o
@@ -273,8 +279,26 @@ router.get('/inicio', async (req, res, next) => {
             push,
             deltaSemana: variacao(cont7, cont7Anterior),
             deltaMes: variacao(cont30, cont30Anterior),
+            visitas: totalDeVisitas._sum.views || 0,
+            visitantes: totalDeVisitas._sum.visitors || 0,
+            // Quantos dos que entraram viraram contato. E a conta que diz se o
+            // problema esta em levar gente ao site ou em convencer quem chega.
+            conversao:
+              totalDeVisitas._sum.views > 0
+                ? Math.round((total / totalDeVisitas._sum.views) * 100)
+                : null,
           },
           serie,
+          visitas: (() => {
+            const porChaveVisita = new Map(
+              visitasPorDia.map((v) => [v.day.toISOString().slice(0, 10), v.views])
+            );
+            return Array.from({ length: 30 }, (_, i) => {
+              const data = new Date(inicio30.getTime() + i * DIA);
+              const chave = data.toISOString().slice(0, 10);
+              return { data, valor: porChaveVisita.get(chave) || 0 };
+            });
+          })(),
           funil,
           origens: porOrigem.map((o) => ({ rotulo: o.origin, valor: o._count._all })),
           cidades: porCidade.map((c) => ({ rotulo: c.city, valor: c._count._all })),

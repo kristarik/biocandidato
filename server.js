@@ -151,6 +151,28 @@ app.post('/:slug/sair', comTenant, express.urlencoded({ extended: false }), asyn
   }
 });
 
+/// Registra a abertura da pagina, somada por dia. Responde 204 e sem corpo
+/// porque o navegador dispara isso em segundo plano — ninguem espera resposta.
+app.post('/:slug/visita', comTenant, async (req, res) => {
+  try {
+    const hoje = new Date();
+    const dia = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()));
+    // Aparelho novo no dia so entra na contagem de visitantes se a pessoa
+    // aceitou ser reconhecida; sem aceite, conta so a abertura.
+    const novoVisitante = req.body?.novo === true ? 1 : 0;
+
+    await getPrisma().siteVisit.upsert({
+      where: { tenantId_day: { tenantId: req.tenant.id, day: dia } },
+      create: { tenantId: req.tenant.id, day: dia, views: 1, visitors: novoVisitante },
+      update: { views: { increment: 1 }, visitors: { increment: novoVisitante } },
+    });
+  } catch (err) {
+    // Contador nao pode derrubar a pagina de ninguem.
+    console.error('[visita]', err.message);
+  }
+  res.status(204).end();
+});
+
 app.get('/:slug/manifest.json', comTenant, (req, res) => {
   res.type('application/manifest+json').send(JSON.stringify(manifesto(req.tenant)));
 });

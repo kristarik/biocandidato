@@ -86,6 +86,7 @@ model Tenant {
   settings      Setting[]
   auditLogs     AuditLog[]
   utmLogs       UtmLog[]
+  visits        SiteVisit[]
 
   @@index([active])
   @@map("tenants")
@@ -810,6 +811,27 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([userId])
   @@map("audit_logs")
+}
+
+/// Visitas do WebApp somadas por dia. Guardar uma linha por acesso encheria a
+/// tabela sem responder nada que o total ja nao responda — e o candidato quer
+/// saber quantos entraram, nao quem.
+model SiteVisit {
+  id       String @id @default(uuid()) @db.Char(36)
+  tenantId String @map("tenant_id") @db.Char(36)
+
+  day      DateTime @db.Date
+  /// Aberturas de pagina.
+  views    Int      @default(0)
+  /// Aparelhos distintos no dia. So conta quem aceitou ser reconhecido — sem
+  /// aceite, a visita entra apenas na contagem anonima de aberturas.
+  visitors Int      @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, day])
+  @@index([tenantId, day])
+  @@map("site_visits")
 }
 
 /// Toda visita rastreada, mesmo antes do cadastro. Quando o apoiador se

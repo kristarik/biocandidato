@@ -608,6 +608,32 @@ ${tagsDeIcone()}
   .barra svg { display: block; }
 
   footer { padding: 2.5rem 1.25rem 1.5rem; text-align: center; font-size: .72rem; color: var(--suave); }
+
+  /* ---------- consentimento ---------- */
+  /* Fica acima do menu fixo: cobrir a navegacao deixaria a pessoa sem saida
+     enquanto nao respondesse. */
+  .consentimento-cookies {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--nav) + env(safe-area-inset-bottom)); z-index: 30;
+    width: 100%; max-width: var(--coluna);
+    background: var(--fundo); border-top: 1px solid var(--borda);
+    box-shadow: 0 -8px 28px rgba(16,21,28,.16);
+    padding: 1rem 1.1rem 1.1rem;
+  }
+  .consentimento-cookies[hidden] { display: none; }
+  .consentimento-cookies p {
+    margin: 0 0 .8rem; font-size: .78rem; line-height: 1.5; color: var(--suave);
+  }
+  .consentimento-cookies strong { color: var(--texto); display: block; margin-bottom: .15rem; }
+  .consentimento-acoes { display: flex; gap: .5rem; }
+  .consentimento-acoes button {
+    flex: 1; padding: .75rem; border: 0; border-radius: 8px; cursor: pointer;
+    font: inherit; font-size: .82rem; font-weight: 700;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
+  }
+  .consentimento-acoes button:active { transform: scale(.97); }
+  .consentimento-acoes .recusar { background: var(--superficie); color: var(--texto); }
+  .consentimento-acoes .aceitar { background: var(--escuro); color: #fff; }
 </style>
 </head>
 <body>
@@ -638,6 +664,18 @@ ${blocoBanner(bannerPor('RODAPE'))}
 ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 
 <footer>Candidato Online</footer>
+
+<div class="consentimento-cookies" id="aviso-cookies" hidden>
+  <p>
+    <strong>Este site usa cookies e dados do seu aparelho.</strong>
+    Usamos para lembrar suas escolhas, medir as visitas e enviar as
+    notificações que você autorizar. Você pode recusar e continuar navegando.
+  </p>
+  <div class="consentimento-acoes">
+    <button type="button" class="recusar">Só o necessário</button>
+    <button type="button" class="aceitar">Aceitar</button>
+  </div>
+</div>
 
 <dialog id="lightbox">
   <div class="conteudo"><h3></h3><p></p></div>
@@ -682,6 +720,53 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   var TEXTO_COMPARTILHAR = ${JSON.stringify(
     `Esse é meu candidato! ${t.name}${t.number ? ` ${t.number}` : ''}.`
   )};
+
+  // ----- consentimento e contagem de visitas -----
+  var CHAVE_ACEITE = 'co-consentimento';
+  var CHAVE_VISITA = 'co-ultima-visita';
+
+  function guardar(chave, valor) {
+    try { localStorage.setItem(chave, valor); } catch (e) { /* modo anonimo */ }
+  }
+  function ler(chave) {
+    try { return localStorage.getItem(chave); } catch (e) { return null; }
+  }
+
+  function registrarVisita(aceitou) {
+    var hoje = new Date().toISOString().slice(0, 10);
+    // So conta aparelho novo quando ha aceite: sem ele nao guardamos marca
+    // nenhuma, entao nao ha como saber se ja esteve aqui.
+    var novo = aceitou && ler(CHAVE_VISITA) !== hoje;
+    if (novo) guardar(CHAVE_VISITA, hoje);
+
+    fetch('/' + SLUG + '/visita', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ novo: novo }),
+      keepalive: true
+    }).catch(function () { /* contador nao atrapalha a visita */ });
+  }
+
+  var aviso = document.getElementById('aviso-cookies');
+  var escolha = ler(CHAVE_ACEITE);
+
+  if (escolha) {
+    registrarVisita(escolha === 'aceito');
+  } else if (aviso) {
+    aviso.hidden = false;
+    aviso.querySelector('.aceitar').addEventListener('click', function () {
+      guardar(CHAVE_ACEITE, 'aceito');
+      aviso.hidden = true;
+      registrarVisita(true);
+    });
+    aviso.querySelector('.recusar').addEventListener('click', function () {
+      guardar(CHAVE_ACEITE, 'recusado');
+      aviso.hidden = true;
+      registrarVisita(false);
+    });
+  } else {
+    registrarVisita(false);
+  }
 
   // ----- compartilhar peca -----
   var folha = document.getElementById('opcoes-compartilhar');

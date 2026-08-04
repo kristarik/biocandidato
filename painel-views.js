@@ -404,7 +404,7 @@ function kpi(rotulo, valor, delta) {
   </div>`;
 }
 
-function telaInicio({ numeros, serie, funil, origens, cidades, ultimos }) {
+function telaInicio({ numeros, serie, visitas = [], funil, origens, cidades, ultimos }) {
   const linhas = ultimos.length
     ? ultimos
         .map(
@@ -449,10 +449,29 @@ function telaInicio({ numeros, serie, funil, origens, cidades, ultimos }) {
 
 <div class="kpis">
   ${kpi('Total de apoiadores', numeros.total)}
+  ${kpi('Visitas no site', (numeros.visitas || 0).toLocaleString('pt-BR'))}
   ${kpi('Hoje', numeros.hoje)}
   ${kpi('Últimos 7 dias', numeros.semana, { pct: numeros.deltaSemana, periodo: 'vs. 7 anteriores' })}
   ${kpi('Últimos 30 dias', numeros.mes, { pct: numeros.deltaMes, periodo: 'vs. 30 anteriores' })}
+  ${kpi(
+    'Viram e se cadastraram',
+    numeros.conversao === null ? '—' : `${numeros.conversao}%`
+  )}
 </div>
+
+${
+  visitas.some((v) => v.valor > 0)
+    ? caixaGrafico(
+        'Visitas ao site',
+        'Últimos 30 dias · quantas vezes a página foi aberta',
+        graficos.areaCadastros(visitas),
+        graficos.tabela(
+          ['Dia', 'Visitas'],
+          visitas.filter((v) => v.valor > 0).map((v) => [graficos.diaCurto(v.data), String(v.valor)])
+        )
+      )
+    : ''
+}
 
 ${caixaGrafico(
   'Cadastros por dia',
