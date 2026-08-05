@@ -387,6 +387,10 @@ model Campaign {
   message String  @db.Text
   linkUrl String? @map("link_url") @db.VarChar(500)
 
+  /// Imagem grande da notificacao. So o Android e o desktop exibem — o iPhone
+  /// ignora o campo e mostra apenas titulo e texto.
+  imageUrl String? @map("image_url") @db.VarChar(500)
+
   /// Filtros de segmentacao aplicados (cidade, tags, cep, push ativo...).
   /// Guardado como enviado para o relatorio ser reproduzivel depois.
   filters Json?

@@ -105,6 +105,8 @@ const ESTILO = `
   .etiqueta.pendente { background: #fdf2e7; color: #a15c07; }
 
   label.campo { display: block; margin-bottom: .85rem; }
+  /* O display:block acima venceria o hidden do HTML sem esta linha. */
+  .campo[hidden] { display: none; }
   .campo > small { display: block; margin-top: .35rem; font-size: .78rem; color: var(--suave); }
   input[type=file] {
     width: 100%; padding: .5rem; border: 1px dashed var(--borda); border-radius: 8px;
@@ -804,7 +806,7 @@ function telaTurbinar({ alcance, cidades, campanhas, chavePush, aparelhosDoOpera
   <h2>Para quem você consegue falar hoje</h2>
   <p class="legenda-eixo">O público sai dos cadastros do seu WebApp. Push depende de a pessoa ter autorizado notificações; SMS e RCS dependem de ela ter confirmado o número.</p>
 
-  <form method="post" action="/painel/turbinar">
+  <form method="post" action="/painel/turbinar" enctype="multipart/form-data">
     <div class="canais">${CANAIS.map(cartaoCanal).join('')}</div>
 
     <div class="linha" style="margin-top:1.25rem">
@@ -831,6 +833,16 @@ function telaTurbinar({ alcance, cidades, campanhas, chavePush, aparelhosDoOpera
       <input type="url" name="linkUrl" placeholder="https://...">
     </label>
 
+    <label class="campo so-push"><span>Imagem da notificação (opcional)</span>
+      <input type="file" name="imagem" accept="image/*">
+      <small class="vazio">
+        Aparece grande embaixo do texto no Android e no computador.
+        <strong>O iPhone não mostra imagem</strong> — então a mensagem precisa
+        funcionar sozinha. O aparelho corta a arte numa faixa deitada: deixe o
+        importante no meio.
+      </small>
+    </label>
+
     <button type="submit">Criar campanha</button>
   </form>
 </div>
@@ -841,6 +853,24 @@ function telaTurbinar({ alcance, cidades, campanhas, chavePush, aparelhosDoOpera
 </div>
 
 <script>
+// O campo de imagem so existe no push. Nos outros canais a arte nao vai a
+// lugar nenhum, e deixar o campo aberto prometeria um envio que nao acontece.
+(function () {
+  var soPush = document.querySelectorAll('.so-push');
+  var canais = document.querySelectorAll('input[name=channel]');
+  if (!soPush.length || !canais.length) return;
+
+  function ajustar() {
+    var ePush = document.querySelector('input[name=channel]:checked')?.value === 'PUSH';
+    soPush.forEach(function (campo) {
+      campo.hidden = !ePush;
+      if (!ePush) campo.querySelector('input[type=file]').value = '';
+    });
+  }
+  canais.forEach(function (c) { c.addEventListener('change', ajustar); });
+  ajustar();
+})();
+
 (function () {
   var CHAVE = ${JSON.stringify(chavePush || '')};
   var caixa = document.getElementById('avisos-do-aparelho');

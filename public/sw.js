@@ -18,8 +18,13 @@ self.addEventListener('push', (evento) => {
   const titulo = dados.titulo || 'Nova mensagem';
   const opcoes = {
     body: dados.corpo || '',
+    // Icone pequeno ao lado do texto: a foto do candidato quando existe. E o
+    // unico dos dois que aparece em todo aparelho.
     icon: dados.icone || '/assets/icone-192.png',
     badge: '/assets/icone-32.png',
+    // Imagem grande abaixo do texto. Android e desktop exibem; o iPhone ignora
+    // o campo em silencio, entao a mensagem nunca pode depender dela.
+    ...(dados.imagem ? { image: dados.imagem } : {}),
     // Agrupa por campanha: duas notificacoes da mesma campanha nao empilham
     // na tela do eleitor.
     tag: dados.campanha || undefined,

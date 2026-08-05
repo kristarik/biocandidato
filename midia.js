@@ -17,6 +17,11 @@ const PERFIS = {
   // precisa aguentar a tela cheia de um celular sem parecer ampliada.
   peca: { largura: 1440, altura: 1800, rotulo: 'peça para compartilhar' },
   divulgacao: { largura: 1600, altura: 900, rotulo: 'banner de divulgação' },
+  // Imagem da notificacao. Nao e recortada aqui de proposito: o Android corta
+  // sozinho para uma faixa deitada, e cortar antes decidiria pelo candidato
+  // qual pedaco do rosto dele sai. O limite serve para o arquivo nao pesar no
+  // 4G de quem recebe.
+  push: { largura: 1440, altura: 1080, rotulo: 'imagem da notificação' },
   icone: { largura: 240, altura: 240, rotulo: 'ícone do link' },
 };
 

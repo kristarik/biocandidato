@@ -545,7 +545,7 @@ router.get('/turbinar', async (req, res, next) => {
   }
 });
 
-router.post('/turbinar', async (req, res, next) => {
+router.post('/turbinar', upload.fields([{ name: 'imagem', maxCount: 1 }]), async (req, res, next) => {
   try {
     const prisma = getPrisma();
     const tenantId = req.tenant.id;
@@ -587,6 +587,10 @@ router.post('/turbinar', async (req, res, next) => {
       );
     }
 
+    // Sobe a imagem depois das validacoes: gravar a arte de uma campanha que
+    // vai ser recusada deixaria lixo no banco.
+    const imageUrl = channel === 'PUSH' ? await urlDoUpload(req, 'imagem', 'push') : undefined;
+
     await prisma.campaign.create({
       data: {
         tenantId,
@@ -595,6 +599,7 @@ router.post('/turbinar', async (req, res, next) => {
         title: texto(b.title, 150),
         message,
         linkUrl: texto(b.linkUrl, 500),
+        ...(imageUrl ? { imageUrl } : {}),
         filters: filtros,
         status: 'DRAFT',
         totalRecipients,

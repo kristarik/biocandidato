@@ -12,6 +12,27 @@ const INTERVALO_MS = 15_000;
 
 class ErroDisparo extends Error {}
 
+/// Monta a carga que o service worker recebe.
+///
+/// O endereco precisa ser absoluto: o navegador baixa a imagem fora da pagina,
+/// sem origem para completar um caminho que comece com barra.
+function montarCarga({ titulo, corpo, url, campanha, imagem, tenant }) {
+  const raiz = (process.env.APP_URL || `https://${process.env.APP_DOMAIN || 'candidato.bio'}`).replace(/\/+$/, '');
+  const absoluta = (caminho) =>
+    !caminho ? undefined : /^https?:\/\//i.test(caminho) ? caminho : `${raiz}${caminho}`;
+
+  return {
+    titulo,
+    corpo,
+    url,
+    campanha,
+    // A foto do candidato como icone: e o unico dos dois que aparece em todo
+    // aparelho, entao vale mais que a imagem grande.
+    icone: absoluta(tenant?.photoUrl),
+    imagem: absoluta(imagem),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Enfileiramento
 // ---------------------------------------------------------------------------
@@ -107,7 +128,7 @@ async function enviarTeste(campanhaId, tenantId, userId) {
 
   const campanha = await prisma.campaign.findFirst({
     where: { id: campanhaId, tenantId },
-    include: { tenant: { select: { slug: true, name: true } } },
+    include: { tenant: { select: { slug: true, name: true, photoUrl: true } } },
   });
   if (!campanha) throw new ErroDisparo('Campanha não encontrada.');
   if (campanha.channel !== 'PUSH') {
@@ -124,12 +145,14 @@ async function enviarTeste(campanhaId, tenantId, userId) {
     );
   }
 
-  const carga = {
+  const carga = montarCarga({
     titulo: campanha.title || campanha.tenant.name,
     corpo: campanha.message,
     url: `/${campanha.tenant.slug}`,
     campanha: `teste-${campanha.id}`,
-  };
+    imagem: campanha.imageUrl,
+    tenant: campanha.tenant,
+  });
 
   const saidas = await Promise.all(inscricoes.map((i) => push.enviarPara(i, carga)));
   const entregues = saidas.filter((s) => s.ok).length;
@@ -163,12 +186,14 @@ async function enviarUma(notificacao) {
     return { ok: false, erro: 'Sem inscrição ativa' };
   }
 
-  const carga = {
+  const carga = montarCarga({
     titulo: notificacao.title || notificacao.tenant?.name || 'Nova mensagem',
     corpo: notificacao.message,
     url: notificacao.url,
     campanha: notificacao.campaignId,
-  };
+    imagem: notificacao.imagem,
+    tenant: notificacao.tenant,
+  });
 
   const resultados = await Promise.all(tokens.map((t) => push.enviarPara(t, carga)));
   const algumEntregou = resultados.some((r) => r.ok);
@@ -201,7 +226,7 @@ async function processarBloco(campanha) {
     const fatia = pendentes.slice(i, i + ENVIOS_SIMULTANEOS);
     const saidas = await Promise.all(
       fatia.map(async (n) => {
-        const r = await enviarUma({ ...n, url, tenant: campanha.tenant });
+        const r = await enviarUma({ ...n, url, tenant: campanha.tenant, imagem: campanha.imageUrl });
         return { n, r };
       })
     );
@@ -272,7 +297,7 @@ async function rodada() {
   const prisma = getPrisma();
   const emAndamento = await prisma.campaign.findMany({
     where: { status: 'SENDING' },
-    include: { tenant: { select: { slug: true, name: true } } },
+    include: { tenant: { select: { slug: true, name: true, photoUrl: true } } },
     orderBy: { startedAt: 'asc' },
     take: 5,
   });
