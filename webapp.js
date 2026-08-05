@@ -81,6 +81,7 @@ function blocoApoio(indice, ancora) {
 
   <div class="etapa etapa-fim" hidden>
     <p class="sucesso">Cadastro concluído. Obrigado pelo seu apoio!</p>
+    <p class="ajuda avisos-ligados" hidden>Os avisos deste aparelho já estão ligados.</p>
   </div>
 
   <p class="consentimento">
@@ -624,7 +625,21 @@ ${tagsDeIcone()}
   .consentimento-cookies p {
     margin: 0 0 .8rem; font-size: .78rem; line-height: 1.5; color: var(--suave);
   }
-  .consentimento-cookies strong { color: var(--texto); display: block; margin-bottom: .15rem; }
+  .consentimento-cookies > p strong { color: var(--texto); display: block; margin-bottom: .15rem; }
+  /* O aceite dos avisos fica dentro do mesmo aviso, mas separado: quem quer
+     cookies e nao quer notificacao desmarca aqui e nao ve o pedido do
+     navegador — que, uma vez negado, nao da para perguntar de novo. */
+  .consentimento-avisos {
+    display: flex; gap: .55rem; align-items: flex-start; cursor: pointer;
+    margin: 0 0 .85rem; padding: .65rem .7rem; border-radius: 8px;
+    background: var(--superficie); font-size: .78rem; line-height: 1.45; color: var(--texto);
+  }
+  .consentimento-avisos[hidden] { display: none; }
+  .consentimento-avisos input {
+    width: 17px; height: 17px; margin: .08rem 0 0; flex: 0 0 auto;
+    accent-color: var(--escuro); cursor: pointer;
+  }
+  .consentimento-avisos strong { font-weight: 700; }
   .consentimento-acoes { display: flex; gap: .5rem; }
   .consentimento-acoes button {
     flex: 1; padding: .75rem; border: 0; border-radius: 8px; cursor: pointer;
@@ -671,6 +686,10 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     Usamos para lembrar suas escolhas, medir as visitas e enviar as
     notificações que você autorizar. Você pode recusar e continuar navegando.
   </p>
+  <label class="consentimento-avisos" hidden>
+    <input type="checkbox" checked>
+    <span>Quero receber os avisos de <strong>${esc(t.name)}</strong> neste aparelho</span>
+  </label>
   <div class="consentimento-acoes">
     <button type="button" class="recusar">Só o necessário</button>
     <button type="button" class="aceitar">Aceitar</button>
@@ -721,6 +740,48 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     `Esse é meu candidato! ${t.name}${t.number ? ` ${t.number}` : ''}.`
   )};
 
+  // ----- inscricao de push -----
+  // Fica antes do consentimento porque o proprio aviso de cookies ja oferece
+  // os avisos, e o clique em "Aceitar" precisa destas funcoes prontas.
+  function bytesDaChave(base64) {
+    var limpo = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    var bruto = atob(limpo);
+    var saida = new Uint8Array(bruto.length);
+    for (var i = 0; i < bruto.length; i++) saida[i] = bruto.charCodeAt(i);
+    return saida;
+  }
+
+  var pushSuportado =
+    'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && CHAVE_PUSH;
+
+  /// Guarda a inscricao no servidor. Sem supporterId ela nasce sem dono — e o
+  /// caso de quem autorizou no aviso de cookies antes de deixar o numero. O
+  /// endpoint e o mesmo depois, entao a linha e adotada no cadastro.
+  async function inscreverPush(supporterId) {
+    if (!pushSuportado) return { ok: false, motivo: 'sem-suporte' };
+
+    var permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') return { ok: false, motivo: 'negada' };
+
+    var registro = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    var inscricao = await registro.pushManager.getSubscription();
+    if (!inscricao) {
+      inscricao = await registro.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: bytesDaChave(CHAVE_PUSH)
+      });
+    }
+
+    var r = await fetch('/' + SLUG + '/apoiar/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ supporterId: supporterId || null, inscricao: inscricao.toJSON() })
+    });
+    return { ok: r.ok };
+  }
+
   // ----- consentimento e contagem de visitas -----
   var CHAVE_ACEITE = 'co-consentimento';
   var CHAVE_VISITA = 'co-ultima-visita';
@@ -748,17 +809,31 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   }
 
   var aviso = document.getElementById('aviso-cookies');
+  var opcaoAvisos = aviso && aviso.querySelector('.consentimento-avisos');
+  var caixaAvisos = opcaoAvisos && opcaoAvisos.querySelector('input');
   var escolha = ler(CHAVE_ACEITE);
 
   if (escolha) {
-    registrarVisita(escolha === 'aceito');
+    registrarVisita(escolha !== 'recusado');
   } else if (aviso) {
+    // So oferece os avisos onde o navegador entrega e onde ainda da para
+    // perguntar. No iPhone fora da tela de inicio nao ha push, e prometer aqui
+    // seria promessa quebrada.
+    if (opcaoAvisos && pushSuportado && Notification.permission === 'default') {
+      opcaoAvisos.hidden = false;
+    }
     aviso.hidden = false;
+
     aviso.querySelector('.aceitar').addEventListener('click', function () {
-      guardar(CHAVE_ACEITE, 'aceito');
+      var querAvisos = Boolean(opcaoAvisos && !opcaoAvisos.hidden && caixaAvisos.checked);
+      guardar(CHAVE_ACEITE, querAvisos ? 'aceito-avisos' : 'aceito');
       aviso.hidden = true;
       registrarVisita(true);
+      // O pedido sai dentro do proprio clique: fora de um gesto da pessoa,
+      // parte dos navegadores recusa mostrar a caixa de permissao.
+      if (querAvisos) inscreverPush(null).catch(function () {});
     });
+
     aviso.querySelector('.recusar').addEventListener('click', function () {
       guardar(CHAVE_ACEITE, 'recusado');
       aviso.hidden = true;
@@ -949,43 +1024,6 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
   }
 
-  // ----- cadastro em tres etapas -----
-  // ----- inscricao de push -----
-  function bytesDaChave(base64) {
-    var limpo = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
-    var bruto = atob(limpo);
-    var saida = new Uint8Array(bruto.length);
-    for (var i = 0; i < bruto.length; i++) saida[i] = bruto.charCodeAt(i);
-    return saida;
-  }
-
-  var pushSuportado = 'serviceWorker' in navigator && 'PushManager' in window && CHAVE_PUSH;
-
-  async function inscreverPush(supporterId) {
-    if (!pushSuportado) return { ok: false, motivo: 'sem-suporte' };
-
-    var permissao = await Notification.requestPermission();
-    if (permissao !== 'granted') return { ok: false, motivo: 'negada' };
-
-    var registro = await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
-
-    var inscricao = await registro.pushManager.getSubscription();
-    if (!inscricao) {
-      inscricao = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: bytesDaChave(CHAVE_PUSH)
-      });
-    }
-
-    var r = await fetch('/' + SLUG + '/apoiar/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supporterId: supporterId, inscricao: inscricao.toJSON() })
-    });
-    return { ok: r.ok };
-  }
-
   // ----- cadastro -----
   document.querySelectorAll('[data-apoio]').forEach(function (bloco) {
     var telefoneConfirmado = '';
@@ -1039,6 +1077,15 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     // Depois do numero salvo, oferece o push; sem suporte no navegador pula
     // direto para o fim em vez de mostrar um botao que nao faz nada.
     function seguirParaPush() {
+      // Quem ja autorizou no aviso de cookies nao autoriza de novo: a inscricao
+      // do aparelho apenas ganha dono e passa a entrar nas campanhas. Pedir
+      // outra vez mostraria um botao que nao abre caixa nenhuma.
+      if (pushSuportado && Notification.permission === 'granted') {
+        inscreverPush(idApoiador).catch(function () {});
+        etapas.fim.querySelector('.avisos-ligados').hidden = false;
+        mostrar('fim');
+        return;
+      }
       if (pushSuportado && Notification.permission !== 'denied') mostrar('push');
       else mostrar('fim');
     }

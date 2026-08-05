@@ -35,15 +35,6 @@ async function inscrever({ tenantId, supporterId, userId, inscricao, userAgent }
     throw erro;
   }
 
-  // Toda inscricao tem dono: um eleitor cadastrado ou quem opera o painel.
-  // Sem dono ela nao entraria no alcance de campanha nenhuma nem serviria
-  // para teste, entao seria lixo no banco.
-  if (!supporterId && !userId) {
-    const erro = new Error('Faça o cadastro antes de ativar os avisos.');
-    erro.status = 400;
-    throw erro;
-  }
-
   const prisma = getPrisma();
   const comum = {
     p256dh,
@@ -53,7 +44,14 @@ async function inscrever({ tenantId, supporterId, userId, inscricao, userAgent }
     lastSeenAt: new Date(),
   };
 
-  const dono = supporterId ? { supporterId } : { userId };
+  // A inscricao pode chegar antes do cadastro, porque o aviso de cookies ja
+  // oferece os avisos na primeira visita. Ate a pessoa deixar o numero ela fica
+  // sem dono e nao entra em campanha nenhuma — o disparo sai de supporters. No
+  // cadastro o mesmo endpoint volta com o supporterId e a linha e adotada.
+  //
+  // Sem dono o objeto vai vazio de proposito: gravar `supporterId: null` num
+  // update apagaria o vinculo de quem ja se cadastrou e reabriu a pagina.
+  const dono = supporterId ? { supporterId } : userId ? { userId } : {};
 
   await prisma.$transaction([
     prisma.pushToken.upsert({
