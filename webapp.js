@@ -626,20 +626,10 @@ ${tagsDeIcone()}
     margin: 0 0 .8rem; font-size: .78rem; line-height: 1.5; color: var(--suave);
   }
   .consentimento-cookies > p strong { color: var(--texto); display: block; margin-bottom: .15rem; }
-  /* O aceite dos avisos fica dentro do mesmo aviso, mas separado: quem quer
-     cookies e nao quer notificacao desmarca aqui e nao ve o pedido do
-     navegador — que, uma vez negado, nao da para perguntar de novo. */
-  .consentimento-avisos {
-    display: flex; gap: .55rem; align-items: flex-start; cursor: pointer;
-    margin: 0 0 .85rem; padding: .65rem .7rem; border-radius: 8px;
-    background: var(--superficie); font-size: .78rem; line-height: 1.45; color: var(--texto);
-  }
-  .consentimento-avisos[hidden] { display: none; }
-  .consentimento-avisos input {
-    width: 17px; height: 17px; margin: .08rem 0 0; flex: 0 0 auto;
-    accent-color: var(--escuro); cursor: pointer;
-  }
-  .consentimento-avisos strong { font-weight: 700; }
+  /* O aviso de push mora no proprio texto, sem caixa nem destaque: quem aceita
+     ve a pergunta do navegador logo em seguida, e e la que a escolha e feita
+     de verdade. */
+  .trecho-avisos[hidden] { display: none; }
   .consentimento-acoes { display: flex; gap: .5rem; }
   .consentimento-acoes button {
     flex: 1; padding: .75rem; border: 0; border-radius: 8px; cursor: pointer;
@@ -683,13 +673,10 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 <div class="consentimento-cookies" id="aviso-cookies" hidden>
   <p>
     <strong>Este site usa cookies e dados do seu aparelho.</strong>
-    Usamos para lembrar suas escolhas, medir as visitas e enviar as
-    notificações que você autorizar. Você pode recusar e continuar navegando.
+    Usamos para lembrar suas escolhas e medir as visitas<span class="trecho-avisos" hidden>,
+    e o seu navegador vai perguntar se pode enviar os avisos da campanha</span>.
+    Você pode recusar e continuar navegando.
   </p>
-  <label class="consentimento-avisos" hidden>
-    <input type="checkbox" checked>
-    <span>Quero receber os avisos de <strong>${esc(t.name)}</strong> neste aparelho</span>
-  </label>
   <div class="consentimento-acoes">
     <button type="button" class="recusar">Só o necessário</button>
     <button type="button" class="aceitar">Aceitar</button>
@@ -809,29 +796,26 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   }
 
   var aviso = document.getElementById('aviso-cookies');
-  var opcaoAvisos = aviso && aviso.querySelector('.consentimento-avisos');
-  var caixaAvisos = opcaoAvisos && opcaoAvisos.querySelector('input');
   var escolha = ler(CHAVE_ACEITE);
 
   if (escolha) {
     registrarVisita(escolha !== 'recusado');
   } else if (aviso) {
-    // So oferece os avisos onde o navegador entrega e onde ainda da para
-    // perguntar. No iPhone fora da tela de inicio nao ha push, e prometer aqui
-    // seria promessa quebrada.
-    if (opcaoAvisos && pushSuportado && Notification.permission === 'default') {
-      opcaoAvisos.hidden = false;
-    }
+    // So anuncia os avisos onde o navegador entrega e onde ainda da para
+    // perguntar. No iPhone fora da tela de inicio nao ha push, e a frase viraria
+    // promessa quebrada.
+    var vaiPedirAvisos = Boolean(pushSuportado && Notification.permission === 'default');
+    if (vaiPedirAvisos) aviso.querySelector('.trecho-avisos').hidden = false;
     aviso.hidden = false;
 
     aviso.querySelector('.aceitar').addEventListener('click', function () {
-      var querAvisos = Boolean(opcaoAvisos && !opcaoAvisos.hidden && caixaAvisos.checked);
-      guardar(CHAVE_ACEITE, querAvisos ? 'aceito-avisos' : 'aceito');
+      guardar(CHAVE_ACEITE, vaiPedirAvisos ? 'aceito-avisos' : 'aceito');
       aviso.hidden = true;
       registrarVisita(true);
       // O pedido sai dentro do proprio clique: fora de um gesto da pessoa,
-      // parte dos navegadores recusa mostrar a caixa de permissao.
-      if (querAvisos) inscreverPush(null).catch(function () {});
+      // parte dos navegadores recusa mostrar a caixa de permissao. A escolha
+      // real acontece ali, na caixa do navegador.
+      if (vaiPedirAvisos) inscreverPush(null).catch(function () {});
     });
 
     aviso.querySelector('.recusar').addEventListener('click', function () {
