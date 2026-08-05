@@ -1,5 +1,9 @@
 # Material dos candidatos
 
+O caminho completo — da pasta à URL no ar — está em
+`.claude/skills/candidato-novo/SKILL.md`. Este arquivo cobre só a organização
+do material.
+
 Uma pasta por candidato, com o nome dele em minúsculas e hífen — o mesmo
 formato do endereço no site:
 
