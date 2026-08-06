@@ -10,6 +10,7 @@ const { buscarPorSlug, render, paginaNaoEncontrada, manifesto, proporcaoDaCapa }
 const { iniciar, completar, ErroCadastro, PROPOSITO: PROPOSITO_APOIO } = require('./cadastro');
 const chaves = require('./chaves');
 const { criarLimite, recusarJson } = require('./limite');
+const seguranca = require('./seguranca');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
 const push = require('./push');
@@ -19,6 +20,10 @@ const { getPrisma } = require('./prisma-client');
 const app = express();
 
 app.set('trust proxy', 1);
+// Nao anuncia qual framework roda aqui: e a primeira coisa que um scanner usa
+// para escolher qual lista de falhas conhecidas tentar.
+app.disable('x-powered-by');
+app.use(seguranca.cabecalhos);
 app.use(express.json({ limit: '16kb' }));
 app.use(cookieParser());
 
@@ -276,15 +281,6 @@ app.get('/:slug', async (req, res, next) => {
   }
 });
 
-app.use((req, res) => {
-  res.status(404).type('html').send(paginaNaoEncontrada());
-});
-
-app.use((err, req, res, next) => {
-  console.error('Erro nao tratado:', err);
-  res.status(500).type('html').send(paginaNaoEncontrada());
-});
-
 /// Gatilho externo do disparo, para um cron do hPanel acelerar a fila sem
 /// esperar o intervalo. Protegido pelo mesmo token do diagnostico: sem ele,
 /// qualquer um poderia martelar a fila de fora.
@@ -296,6 +292,15 @@ app.get('/tarefas/disparo', async (req, res) => {
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
+});
+
+app.use((req, res) => {
+  res.status(404).type('html').send(paginaNaoEncontrada());
+});
+
+app.use((err, req, res, next) => {
+  console.error('Erro nao tratado:', err);
+  res.status(500).type('html').send(paginaNaoEncontrada());
 });
 
 app.listen(PORT, HOST, () => {

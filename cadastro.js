@@ -43,6 +43,15 @@ function normalizarCep(entrada) {
   return `${d.slice(0, 5)}-${d.slice(5)}`;
 }
 
+/// Corta a marca de origem no tamanho da coluna. Sem isso, um link de campanha
+/// com UTM longa — coisa que ferramenta de anuncio gera sozinha — derrubaria o
+/// cadastro com erro de banco, e a pessoa perderia o contato por causa de um
+/// parametro na URL.
+function marca(valor, limite = 120) {
+  const t = String(valor ?? '').trim();
+  return t ? t.slice(0, limite) : null;
+}
+
 function hashDoTexto(texto) {
   return crypto.createHash('sha256').update(texto).digest('hex');
 }
@@ -80,14 +89,14 @@ async function iniciar({ tenant, telefone, ip, userAgent, utm }) {
       tenantId: tenant.id,
       phone,
       status: 'CONFIRMADO',
-      origin: utm?.source || 'organico',
+      origin: marca(utm?.source, 60) || 'organico',
       registrationIp: ip,
       userAgent,
-      utmSource: utm?.source,
-      utmMedium: utm?.medium,
-      utmCampaign: utm?.campaign,
-      utmContent: utm?.content,
-      utmTerm: utm?.term,
+      utmSource: marca(utm?.source),
+      utmMedium: marca(utm?.medium),
+      utmCampaign: marca(utm?.campaign),
+      utmContent: marca(utm?.content),
+      utmTerm: marca(utm?.term),
     },
   });
 
