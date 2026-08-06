@@ -1,4 +1,5 @@
 const { esc, tagsDeIcone } = require('./html');
+const { metaCsp } = require('./seguranca');
 const { ESTILO, formatarData } = require('./painel-views');
 
 const ESTILO_MASTER = `${ESTILO}
@@ -50,7 +51,7 @@ function pagina({ titulo, aba, corpo, recado, nome }) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(titulo)} · Master</title>
 ${tagsDeIcone()}

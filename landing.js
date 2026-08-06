@@ -1,4 +1,5 @@
 const { esc, tagsDeIcone } = require('./html');
+const { metaCsp } = require('./seguranca');
 
 /// Para onde vao os botoes de conversao. WhatsApp primeiro porque e o canal
 /// que o publico dessa pagina usa; e-mail como reserva; ancora dos planos
@@ -259,7 +260,7 @@ function render() {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Candidato Online — a base de apoiadores que é sua, não alugada</title>
 <meta name="description" content="Cada candidato ganha um site pronto que transforma seguidor em contato, e um painel para falar com a base inteira por push, SMS e RCS. Sem depender do alcance das redes.">

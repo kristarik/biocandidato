@@ -1,4 +1,5 @@
 const { esc, cor, tagsDeIcone } = require('./html');
+const { metaCsp } = require('./seguranca');
 const graficos = require('./painel-graficos');
 
 const ESTILO = `
@@ -277,7 +278,7 @@ function pagina({ titulo, tenant, aba, corpo, recado, nome }) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(titulo)} · Candidato Online</title>
 ${tagsDeIcone()}
@@ -332,7 +333,7 @@ function telaEntrar({ erro, usuario }) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Entrar · Candidato Online</title>
 ${tagsDeIcone()}

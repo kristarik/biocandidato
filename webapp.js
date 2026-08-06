@@ -1,4 +1,5 @@
 const { getPrisma } = require('./prisma-client');
+const { metaCsp } = require('./seguranca');
 const { esc, cor, urlSegura, tagsDeIcone } = require('./html');
 
 // Icones em SVG inline: sem requisicao externa, herdam a cor do container.
@@ -237,7 +238,7 @@ function render(t, { chavePush, proporcaoCapa, origem = '' } = {}) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(t.name)}${t.number ? ` ${esc(t.number)}` : ''}</title>
 <meta name="description" content="${esc(t.slogan || t.bio || t.name)}">
@@ -1125,7 +1126,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 
 function paginaNaoEncontrada() {
   return `<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8">
+<html lang="pt-BR"><head><meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Candidato não encontrado</title>
 <style>

@@ -39,6 +39,24 @@ const POLITICA = [
   // a exigir https de si mesmo.
 ].join('; ');
 
+/// A mesma politica dentro do HTML.
+///
+/// Existe porque a borda da Hostinger troca o cabecalho Content-Security-Policy
+/// pelo dela — verificado em producao: sai daqui completo e chega ao navegador
+/// so como "upgrade-insecure-requests". Pela tag o navegador le direto do
+/// documento, e nenhum intermediario reescreve.
+///
+/// frame-ancestors fica de fora porque o navegador ignora essa diretiva quando
+/// vem por tag, e reclamaria no console. Quem segura o iframe e o
+/// X-Frame-Options, que a borda deixa passar.
+const POLITICA_NA_TAG = POLITICA.split('; ')
+  .filter((d) => !d.startsWith('frame-ancestors'))
+  .join('; ');
+
+function metaCsp() {
+  return `<meta http-equiv="Content-Security-Policy" content="${POLITICA_NA_TAG}">`;
+}
+
 function cabecalhos(req, res, next) {
   res.set({
     'Content-Security-Policy': POLITICA,
@@ -55,4 +73,4 @@ function cabecalhos(req, res, next) {
   next();
 }
 
-module.exports = { cabecalhos, POLITICA, HSTS };
+module.exports = { cabecalhos, metaCsp, POLITICA, HSTS };

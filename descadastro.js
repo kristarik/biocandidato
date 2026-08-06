@@ -1,4 +1,5 @@
 const { getPrisma } = require('./prisma-client');
+const { metaCsp } = require('./seguranca');
 const { esc, cor } = require('./html');
 const chaves = require('./chaves');
 
@@ -82,7 +83,7 @@ function pagina(tenant, { estado, telefone }) {
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8">${metaCsp()}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sair da lista · ${esc(tenant.name)}</title>
 <meta name="robots" content="noindex">
