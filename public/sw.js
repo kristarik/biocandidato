@@ -28,7 +28,11 @@ self.addEventListener('push', (evento) => {
     // Agrupa por campanha: duas notificacoes da mesma campanha nao empilham
     // na tela do eleitor.
     tag: dados.campanha || undefined,
-    data: { url: dados.url || '/' },
+    // A saida da lista vive aqui porque e o unico lugar que so o dono do
+    // aparelho alcanca. Um link na pagina precisaria identificar a pessoa, e
+    // identificar sem confirmar o numero e o que abriu o buraco anterior.
+    actions: dados.sair ? [{ action: 'sair', title: 'Não quero mais receber' }] : undefined,
+    data: { url: dados.url || '/', sair: dados.sair },
     lang: 'pt-BR',
   };
 
@@ -37,6 +41,15 @@ self.addEventListener('push', (evento) => {
 
 self.addEventListener('notificationclick', (evento) => {
   evento.notification.close();
+
+  // Quem pediu para sair vai direto para a pagina de saida, numa aba nova. A
+  // aba ja aberta do site nao serve: ela esta noutro endereco, e reaproveitar
+  // faria o toque parecer ignorado.
+  if (evento.action === 'sair' && evento.notification.data?.sair) {
+    evento.waitUntil(self.clients.openWindow(evento.notification.data.sair));
+    return;
+  }
+
   const destino = evento.notification.data?.url || '/';
 
   // Reaproveita uma aba ja aberta do site em vez de abrir outra: o eleitor

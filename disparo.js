@@ -2,6 +2,7 @@ const { Prisma } = require('@prisma/client');
 const { getPrisma } = require('./prisma-client');
 const creditos = require('./creditos');
 const push = require('./push');
+const { linkDeSaida } = require('./descadastro');
 
 /// Quantas notificacoes saem por rodada. Blocos pequenos mantem o processo
 /// responsivo e deixam o disparo retomar de onde parou se a hospedagem
@@ -16,7 +17,7 @@ class ErroDisparo extends Error {}
 ///
 /// O endereco precisa ser absoluto: o navegador baixa a imagem fora da pagina,
 /// sem origem para completar um caminho que comece com barra.
-function montarCarga({ titulo, corpo, url, campanha, imagem, tenant }) {
+function montarCarga({ titulo, corpo, url, campanha, imagem, tenant, supporterId }) {
   const raiz = (process.env.APP_URL || `https://${process.env.APP_DOMAIN || 'candidato.bio'}`).replace(/\/+$/, '');
   const absoluta = (caminho) =>
     !caminho ? undefined : /^https?:\/\//i.test(caminho) ? caminho : `${raiz}${caminho}`;
@@ -30,6 +31,12 @@ function montarCarga({ titulo, corpo, url, campanha, imagem, tenant }) {
     // aparelho, entao vale mais que a imagem grande.
     icone: absoluta(tenant?.photoUrl),
     imagem: absoluta(imagem),
+    // O caminho de saida viaja com a mensagem porque a notificacao e o unico
+    // lugar onde ele pode aparecer sem risco: chega no aparelho de quem se
+    // cadastrou, e nao numa resposta que qualquer um consegue pedir digitando
+    // o telefone dos outros. Sem supporterId — o teste do painel — nao ha
+    // ninguem para descadastrar.
+    sair: supporterId && tenant?.slug ? linkDeSaida(tenant.slug, supporterId) : undefined,
   };
 }
 
@@ -193,6 +200,7 @@ async function enviarUma(notificacao) {
     campanha: notificacao.campaignId,
     imagem: notificacao.imagem,
     tenant: notificacao.tenant,
+    supporterId: notificacao.supporterId,
   });
 
   const resultados = await Promise.all(tokens.map((t) => push.enviarPara(t, carga)));

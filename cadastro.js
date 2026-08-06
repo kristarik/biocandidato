@@ -113,8 +113,14 @@ async function iniciar({ tenant, telefone, ip, userAgent, utm }) {
 /// Etapa 2: nome e CEP, opcionais. Sao pedidos depois do numero ja estar
 /// salvo, para que desistir aqui nao perca o contato.
 ///
-/// Identifica pela chave assinada, nao pelo telefone: aceitar o telefone aqui
-/// deixaria qualquer pessoa reescrever o nome de qualquer numero da base.
+/// Identifica pela chave assinada, nao pelo telefone. So preenche campo vazio:
+/// sem confirmacao do numero, quem digita o telefone de outra pessoa recebe uma
+/// chave valida para ela, e poderia reescrever o nome de quem ja esta na base.
+/// Preencher o que falta e inofensivo; apagar o que ja existe nao e.
+///
+/// O retorno e o mesmo nos dois casos, de proposito: um "seu nome ja estava
+/// preenchido" contaria a quem digitou o numero alheio que aquela pessoa esta
+/// cadastrada — a mesma pergunta que a etapa 1 deixou de responder.
 async function completar({ tenant, chave, nome, cep }) {
   const prisma = getPrisma();
   const id = chaves.ler(PROPOSITO, chave);
@@ -127,10 +133,15 @@ async function completar({ tenant, chave, nome, cep }) {
 
   const nomeLimpo = String(nome || '').trim().slice(0, 150);
   if (nomeLimpo.length < 2) throw new ErroCadastro('Informe seu nome.');
+  const cepLimpo = normalizarCep(cep);
 
   await prisma.supporter.update({
     where: { id: supporter.id },
-    data: { name: nomeLimpo, cep: normalizarCep(cep), status: 'COMPLETO' },
+    data: {
+      ...(supporter.name ? {} : { name: nomeLimpo }),
+      ...(supporter.cep ? {} : cepLimpo ? { cep: cepLimpo } : {}),
+      status: 'COMPLETO',
+    },
   });
 
   return { etapa: 'concluido' };
