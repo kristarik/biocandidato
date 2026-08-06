@@ -11,6 +11,17 @@ const tentativas = new Map();
 const MAX_TENTATIVAS = 8;
 const JANELA_MS = 15 * 60_000;
 
+// Varre o que venceu. Sem isso o mapa so cresce: cada usuario tentado deixa uma
+// entrada, e a limpeza de dentro do `bloqueado` so acontece quando alguem tenta
+// aquele mesmo nome de novo — coisa que quem varre uma lista nunca faz.
+const faxina = setInterval(() => {
+  const agora = Date.now();
+  for (const [chave, registro] of tentativas) {
+    if (agora - registro.desde > JANELA_MS) tentativas.delete(chave);
+  }
+}, 5 * 60_000);
+if (typeof faxina.unref === 'function') faxina.unref();
+
 function segredo() {
   const valor = process.env.JWT_SECRET;
   // Falhar aqui e melhor que assinar sessao com segredo previsivel: sem isso,

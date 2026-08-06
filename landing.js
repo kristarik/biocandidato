@@ -28,7 +28,7 @@ const PASSOS = [
     numero: '02',
     titulo: 'Seu eleitor entra com um toque',
     texto:
-      'Ele abre seu site, digita o WhatsApp e confirma um código. Pronto: virou contato seu. Nome e CEP só depois da confirmação, para não espantar ninguém logo na entrada.',
+      'Ele abre seu site e digita o WhatsApp. Pronto: virou contato seu. Nome e CEP vêm depois, para não espantar ninguém logo na entrada.',
   },
   {
     numero: '03',
@@ -105,7 +105,7 @@ const RECURSOS = [
       '<path d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4Zm-1 15-4-4 1.4-1.4L11 13.2l5.6-5.6L18 9l-7 7Z"/>',
     titulo: 'LGPD desde o primeiro cadastro',
     texto:
-      'Consentimento registrado com data, IP e o texto exato que a pessoa aceitou. Confirmação por código prova que o número é de quem autorizou.',
+      'Consentimento registrado com data, IP e o texto exato que a pessoa aceitou. Toda notificação leva o caminho de saída, e quem sai tem a revogação guardada com data.',
   },
 ];
 
@@ -171,7 +171,7 @@ const PERGUNTAS = [
   },
   {
     p: 'Isso está de acordo com a legislação eleitoral?',
-    r: 'A plataforma registra o consentimento de cada pessoa com data, IP e o texto aceito, e confirma o número por código antes de qualquer envio. Todo disparo tem origem identificável e caminho de descadastro. Ainda assim, a responsabilidade pelo conteúdo e pelo enquadramento na legislação é da campanha — vale alinhar com seu advogado eleitoral.',
+    r: 'A plataforma registra o consentimento de cada pessoa com data, IP e o texto aceito. Todo disparo tem origem identificável e caminho de descadastro em um toque, e a revogação fica guardada com data. O cadastro não confirma o número por código: quem digita é quem autoriza, e a saída da lista é o que garante o controle de quem recebe. Ainda assim, a responsabilidade pelo conteúdo e pelo enquadramento na legislação é da campanha — vale alinhar com seu advogado eleitoral.',
   },
   {
     p: 'O que acontece com meus dados depois da eleição?',

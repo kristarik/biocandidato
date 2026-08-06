@@ -8,6 +8,7 @@ const {
   autenticar, criarCookie, limparCookie, exigirSessao, trocarSenha, MINIMO_SENHA,
 } = require('./auth');
 const vistas = require('./painel-views');
+const { criarLimite } = require('./limite');
 
 const router = express.Router();
 router.use(express.urlencoded({ extended: false, limit: '64kb' }));
@@ -68,7 +69,22 @@ router.get('/entrar', (req, res) => {
   res.type('html').send(vistas.telaEntrar({ erro: req.query.erro, usuario: req.query.usuario }));
 });
 
-router.post('/entrar', async (req, res, next) => {
+// O bloqueio por usuario ja existe no auth, mas so segura quem martela a mesma
+// conta. Este teto e por IP: quem varre uma lista de usuarios trocando o nome a
+// cada tentativa nunca esbarraria no outro.
+const limiteEntrar = criarLimite({
+  max: 20,
+  janelaMs: 15 * 60_000,
+  aoExceder: (req, res) =>
+    res.status(429).type('html').send(
+      vistas.telaEntrar({
+        erro: 'Muitas tentativas deste aparelho. Aguarde alguns minutos.',
+        usuario: req.body?.usuario,
+      })
+    ),
+});
+
+router.post('/entrar', limiteEntrar, async (req, res, next) => {
   try {
     const { usuario, senha } = req.body;
     const resultado = await autenticar(usuario, senha);

@@ -9,6 +9,7 @@ const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto, proporcaoDaCapa } = require('./webapp');
 const { iniciar, completar, ErroCadastro, PROPOSITO: PROPOSITO_APOIO } = require('./cadastro');
 const chaves = require('./chaves');
+const { criarLimite, recusarJson } = require('./limite');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
 const push = require('./push');
@@ -101,6 +102,36 @@ async function comTenant(req, res, next) {
   }
 }
 
+// Tetos dos endpoints publicos de escrita. Sao os unicos que qualquer pessoa
+// alcanca sem login, entao sao por onde uma base seria poluida ou varrida.
+const limiteCadastro = criarLimite({
+  max: 30,
+  janelaMs: 10 * 60_000,
+  aoExceder: recusarJson('Muitas tentativas deste aparelho. Aguarde alguns minutos.'),
+});
+
+// Contador proprio para cada etapa: se dividissem o mesmo teto, quem chegou ao
+// nome seria barrado pelo orcamento ja gasto na etapa do telefone.
+const limiteDados = criarLimite({
+  max: 30,
+  janelaMs: 10 * 60_000,
+  aoExceder: recusarJson('Muitas tentativas deste aparelho. Aguarde alguns minutos.'),
+});
+
+const limitePush = criarLimite({
+  max: 20,
+  janelaMs: 10 * 60_000,
+  aoExceder: recusarJson('Muitas tentativas deste aparelho. Aguarde alguns minutos.'),
+});
+
+// A visita responde 204 mesmo no teto: o contador nao interessa a quem esta
+// lendo a pagina, e devolver erro so encheria o console de quem visita.
+const limiteVisita = criarLimite({
+  max: 60,
+  janelaMs: 10 * 60_000,
+  aoExceder: (req, res) => res.status(204).end(),
+});
+
 function contexto(req) {
   return {
     ip: req.ip,
@@ -154,7 +185,7 @@ app.post('/:slug/sair', comTenant, express.urlencoded({ extended: false }), asyn
 
 /// Registra a abertura da pagina, somada por dia. Responde 204 e sem corpo
 /// porque o navegador dispara isso em segundo plano — ninguem espera resposta.
-app.post('/:slug/visita', comTenant, async (req, res) => {
+app.post('/:slug/visita', limiteVisita, comTenant, async (req, res) => {
   try {
     const hoje = new Date();
     const dia = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()));
@@ -178,7 +209,7 @@ app.get('/:slug/manifest.json', comTenant, (req, res) => {
   res.type('application/manifest+json').send(JSON.stringify(manifesto(req.tenant)));
 });
 
-app.post('/:slug/apoiar/iniciar', comTenant, (req, res) =>
+app.post('/:slug/apoiar/iniciar', limiteCadastro, comTenant, (req, res) =>
   tratar(res, () =>
     iniciar({
       tenant: req.tenant,
@@ -189,7 +220,7 @@ app.post('/:slug/apoiar/iniciar', comTenant, (req, res) =>
   )
 );
 
-app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
+app.post('/:slug/apoiar/completar', limiteDados, comTenant, (req, res) =>
   tratar(res, () =>
     completar({
       tenant: req.tenant,
@@ -203,7 +234,7 @@ app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
 // Inscricao de push do navegador. A chave assinada diz de quem e a inscricao;
 // sem ela, bastaria o id de outra pessoa para receber as campanhas dirigidas
 // a ela.
-app.post('/:slug/apoiar/push', comTenant, (req, res) =>
+app.post('/:slug/apoiar/push', limitePush, comTenant, (req, res) =>
   tratar(res, async () => {
     const id = chaves.ler(PROPOSITO_APOIO, req.body?.chave);
     const dono = id
