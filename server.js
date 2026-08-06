@@ -7,7 +7,8 @@ const master = require('./master');
 const landing = require('./landing');
 const { inspect, diagnostico } = require('./db');
 const { buscarPorSlug, render, paginaNaoEncontrada, manifesto, proporcaoDaCapa } = require('./webapp');
-const { iniciar, completar, ErroCadastro } = require('./cadastro');
+const { iniciar, completar, ErroCadastro, PROPOSITO: PROPOSITO_APOIO } = require('./cadastro');
+const chaves = require('./chaves');
 const descadastro = require('./descadastro');
 const midia = require('./midia');
 const push = require('./push');
@@ -192,21 +193,22 @@ app.post('/:slug/apoiar/completar', comTenant, (req, res) =>
   tratar(res, () =>
     completar({
       tenant: req.tenant,
-      telefone: req.body?.telefone,
+      chave: req.body?.chave,
       nome: req.body?.nome,
       cep: req.body?.cep,
     })
   )
 );
 
-// Inscricao de push do navegador. Chega depois do cadastro, com o id do
-// apoiador, para o alcance saber a quem a notificacao pertence.
+// Inscricao de push do navegador. A chave assinada diz de quem e a inscricao;
+// sem ela, bastaria o id de outra pessoa para receber as campanhas dirigidas
+// a ela.
 app.post('/:slug/apoiar/push', comTenant, (req, res) =>
   tratar(res, async () => {
-    const supporterId = String(req.body?.supporterId || '');
-    const dono = supporterId
+    const id = chaves.ler(PROPOSITO_APOIO, req.body?.chave);
+    const dono = id
       ? await getPrisma().supporter.findFirst({
-          where: { id: supporterId, tenantId: req.tenant.id },
+          where: { id, tenantId: req.tenant.id },
           select: { id: true },
         })
       : null;

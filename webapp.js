@@ -741,10 +741,10 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
   var pushSuportado =
     'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && CHAVE_PUSH;
 
-  /// Guarda a inscricao no servidor. Sem supporterId ela nasce sem dono — e o
-  /// caso de quem autorizou no aviso de cookies antes de deixar o numero. O
-  /// endpoint e o mesmo depois, entao a linha e adotada no cadastro.
-  async function inscreverPush(supporterId) {
+  /// Guarda a inscricao no servidor. Sem chave ela nasce sem dono — e o caso de
+  /// quem autorizou no aviso de cookies antes de deixar o numero. O endpoint e
+  /// o mesmo depois, entao a linha e adotada no cadastro.
+  async function inscreverPush(chave) {
     if (!pushSuportado) return { ok: false, motivo: 'sem-suporte' };
 
     var permissao = await Notification.requestPermission();
@@ -764,7 +764,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
     var r = await fetch('/' + SLUG + '/apoiar/push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ supporterId: supporterId || null, inscricao: inscricao.toJSON() })
+      body: JSON.stringify({ chave: chave || null, inscricao: inscricao.toJSON() })
     });
     return { ok: r.ok };
   }
@@ -1010,8 +1010,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
 
   // ----- cadastro -----
   document.querySelectorAll('[data-apoio]').forEach(function (bloco) {
-    var telefoneConfirmado = '';
-    var idApoiador = '';
+    var chaveDoApoio = '';
     var aviso = bloco.querySelector('.aviso');
     var etapas = {
       telefone: bloco.querySelector('.etapa-telefone'),
@@ -1065,7 +1064,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
       // do aparelho apenas ganha dono e passa a entrar nas campanhas. Pedir
       // outra vez mostraria um botao que nao abre caixa nenhuma.
       if (pushSuportado && Notification.permission === 'granted') {
-        inscreverPush(idApoiador).catch(function () {});
+        inscreverPush(chaveDoApoio).catch(function () {});
         etapas.fim.querySelector('.avisos-ligados').hidden = false;
         mostrar('fim');
         return;
@@ -1082,9 +1081,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
         utm: Object.fromEntries(new URLSearchParams(location.search))
       }, botao);
       if (!dados) return;
-      telefoneConfirmado = campoTelefone.value;
-      idApoiador = dados.supporterId || '';
-      if (dados.etapa === 'concluido') { seguirParaPush(); return; }
+      chaveDoApoio = dados.chave || '';
       mostrar('dados');
     });
 
@@ -1092,7 +1089,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
       evento.preventDefault();
       var botao = etapas.dados.querySelector('button[type=submit]');
       var dados = await enviar('completar', {
-        telefone: telefoneConfirmado,
+        chave: chaveDoApoio,
         nome: etapas.dados.querySelector('[name=nome]').value,
         cep: campoCep.value
       }, botao);
@@ -1106,7 +1103,7 @@ ${t.socialLinks.length || t.links.length ? blocoApoio(2, false) : ''}
       var botao = etapas.push.querySelector('.ativar-push');
       botao.disabled = true;
       try {
-        var r = await inscreverPush(idApoiador);
+        var r = await inscreverPush(chaveDoApoio);
         if (!r.ok && r.motivo === 'negada') {
           erro('Você bloqueou os avisos. Dá para liberar depois nas configurações do navegador.');
         }

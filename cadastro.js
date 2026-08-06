@@ -1,5 +1,11 @@
 const crypto = require('node:crypto');
 const { getPrisma } = require('./prisma-client');
+const chaves = require('./chaves');
+
+/// Proposito das chaves desta etapa. Separado do descadastro de proposito: a
+/// chave que a pessoa recebe ao se cadastrar nao pode servir para tirar
+/// ninguem da lista.
+const PROPOSITO = 'apoio';
 
 /// Versao do texto de consentimento exibido no formulario. Ao alterar o texto,
 /// suba a versao: consentimentos antigos precisam continuar comprovaveis.
@@ -44,6 +50,12 @@ function hashDoTexto(texto) {
 /// Etapa 1: o numero e o cadastro. Sem confirmacao por codigo, o telefone
 /// informado ja vale — e o descadastro passa a ser o unico caminho de saida,
 /// entao o link de saida precisa acompanhar todo disparo.
+///
+/// A resposta e a mesma para numero conhecido e numero novo, de proposito.
+/// Qualquer diferenca — um "ja cadastrado", uma etapa adiantada — responderia
+/// a pergunta "essa pessoa apoia esse candidato?" para quem so digitou o
+/// numero dela. Preferencia politica e dado sensivel, e numero de celular
+/// brasileiro se varre por faixa.
 async function iniciar({ tenant, telefone, ip, userAgent, utm }) {
   const prisma = getPrisma();
   const phone = normalizarTelefone(telefone);
@@ -60,12 +72,7 @@ async function iniciar({ tenant, telefone, ip, userAgent, utm }) {
         data: { optedOutAt: null },
       });
     }
-    return {
-      etapa: existente.name ? 'concluido' : 'dados',
-      telefone: phone,
-      supporterId: existente.id,
-      jaCadastrado: true,
-    };
+    return { etapa: 'dados', telefone: phone, chave: chaves.criar(PROPOSITO, existente.id) };
   }
 
   const supporter = await prisma.supporter.create({
@@ -100,17 +107,21 @@ async function iniciar({ tenant, telefone, ip, userAgent, utm }) {
     },
   });
 
-  return { etapa: 'dados', telefone: phone, supporterId: supporter.id };
+  return { etapa: 'dados', telefone: phone, chave: chaves.criar(PROPOSITO, supporter.id) };
 }
 
 /// Etapa 2: nome e CEP, opcionais. Sao pedidos depois do numero ja estar
 /// salvo, para que desistir aqui nao perca o contato.
-async function completar({ tenant, telefone, nome, cep }) {
+///
+/// Identifica pela chave assinada, nao pelo telefone: aceitar o telefone aqui
+/// deixaria qualquer pessoa reescrever o nome de qualquer numero da base.
+async function completar({ tenant, chave, nome, cep }) {
   const prisma = getPrisma();
-  const phone = normalizarTelefone(telefone);
+  const id = chaves.ler(PROPOSITO, chave);
+  if (!id) throw new ErroCadastro('Sessao de cadastro invalida. Comece de novo.', 400);
 
-  const supporter = await prisma.supporter.findUnique({
-    where: { tenantId_phone: { tenantId: tenant.id, phone } },
+  const supporter = await prisma.supporter.findFirst({
+    where: { id, tenantId: tenant.id },
   });
   if (!supporter) throw new ErroCadastro('Cadastro nao encontrado.', 404);
 
@@ -122,12 +133,13 @@ async function completar({ tenant, telefone, nome, cep }) {
     data: { name: nomeLimpo, cep: normalizarCep(cep), status: 'COMPLETO' },
   });
 
-  return { etapa: 'concluido', supporterId: supporter.id };
+  return { etapa: 'concluido' };
 }
 
 module.exports = {
   iniciar,
   completar,
+  PROPOSITO,
   ErroCadastro,
   CONSENTIMENTO_TEXTO,
   CONSENTIMENTO_VERSAO,

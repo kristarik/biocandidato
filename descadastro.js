@@ -1,37 +1,18 @@
-const crypto = require('node:crypto');
 const { getPrisma } = require('./prisma-client');
 const { esc, cor } = require('./html');
+const chaves = require('./chaves');
 
-/// Assina o link de saida com o mesmo segredo das sessoes. Sem assinatura,
-/// bastaria trocar o id na URL para descadastrar a base inteira de um
-/// concorrente — o link viaja em mensagem e fica exposto.
-function segredo() {
-  const valor = process.env.JWT_SECRET;
-  if (!valor || valor.length < 32) throw new Error('JWT_SECRET ausente.');
-  return valor;
-}
-
-function assinar(supporterId) {
-  return crypto.createHmac('sha256', segredo()).update(supporterId).digest('base64url').slice(0, 32);
-}
+/// Assina o link de saida. Sem assinatura, bastaria trocar o id na URL para
+/// descadastrar a base inteira de um concorrente — o link viaja em mensagem e
+/// fica exposto.
+const PROPOSITO = 'sair';
 
 function tokenDe(supporterId) {
-  return `${supporterId}.${assinar(supporterId)}`;
+  return chaves.criar(PROPOSITO, supporterId);
 }
 
 function lerToken(token) {
-  const bruto = String(token || '');
-  const corte = bruto.lastIndexOf('.');
-  if (corte < 1) return null;
-
-  const id = bruto.slice(0, corte);
-  const assinatura = bruto.slice(corte + 1);
-  const esperada = assinar(id);
-  if (assinatura.length !== esperada.length) return null;
-
-  const a = Buffer.from(assinatura);
-  const b = Buffer.from(esperada);
-  return crypto.timingSafeEqual(a, b) ? id : null;
+  return chaves.ler(PROPOSITO, token);
 }
 
 /// Monta o link que vai no rodape de cada disparo.
